@@ -12,11 +12,21 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 import kotlin.reflect.KParameter
 import kotlin.reflect.full.createInstance
+import kotlin.reflect.full.findAnnotation
+import kotlin.reflect.full.hasAnnotation
 
 open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
     private val actionParams: List<KParameter> = action.parameters
-    private val ownerObject: Any? = (action as? KFunction<*>)?.ownerObject
-    private val ownerClass: KClass<*>? = group ?: (action as? KFunction<*>)?.ownerClass
+    val ownerObject: Any? = (action as? KFunction<*>)?.ownerObject
+    val ownerClass: KClass<*>? = group ?: (action as? KFunction<*>)?.ownerClass
+
+    inline fun <reified T : Annotation> hasAnnotation(): Boolean {
+        return action.hasAnnotation<T>() || (ownerClass?.hasAnnotation<T>() ?: false)
+    }
+
+    inline fun <reified T : Annotation> findAnnotation(): T? {
+        return action.findAnnotation<T>() ?: ownerClass?.findAnnotation<T>()
+    }
 
     private fun instanceGroup(): Any? {
         return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.createInstance()
