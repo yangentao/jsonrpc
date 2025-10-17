@@ -4,58 +4,69 @@ package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.kson.*
 
-class RpcResponse(val id: KsonValue, val result: KsonValue, val error: RpcError?) : RpcPacket() {
+object RpcNoResponse : RpcResponse()
+
+class RpcResult(val id: KsonValue, val result: KsonValue) : RpcResponse() {
     init {
         assert(id is KsonNum || id is KsonString)
-        assert(!(!result.isNull && error != null))
     }
-
-    val isSuccess: Boolean get() = error == null
-    val isError: Boolean get() = error != null
 
     override fun onJson(jo: KsonObject) {
         super.onJson(jo)
         jo.putAny(Rpc.ID, id)
-        if (error == null) {
-            assert(id is KsonString || id is KsonNum)
-            jo.putAny(Rpc.RESULT, result)
-        } else {
-            val ed = error.data
-            jo.putObject(Rpc.ERROR) {
-                putInt(Rpc.CODE, error.code)
-                putString(Rpc.MESSAGE, error.message)
-                if (ed != null && !ed.isNull) {
-                    putAny(Rpc.DATA, ed)
-                }
-            }
-        }
+        jo.putAny(Rpc.RESULT, result)
+    }
+}
+
+class RpcFailed(val id: KsonValue, val error: RpcError) : RpcResponse() {
+    constructor(id: KsonValue, code: Int, message: String, data: KsonValue? = null) : this(id, RpcError(code, message, data))
+
+    init {
+        assert(id.isNull || id is KsonNum || id is KsonString)
     }
 
+    override fun onJson(jo: KsonObject) {
+        super.onJson(jo)
+        if (!id.isNull) {
+            jo.putAny(Rpc.ID, id)
+        }
+        jo.putObject(Rpc.ERROR, error.toJson())
+    }
+}
+
+sealed class RpcResponse() : RpcPacket() {
+
+    val longID: Long
+        get() {
+            return when (this) {
+                is RpcResult -> (id as KsonNum).data.toLong()
+                is RpcFailed -> (id as? KsonNum)?.data?.toLong() ?: -1L
+                is RpcNoResponse -> -1L
+            }
+        }
+
+    val jsonText: String?
+        get() {
+            return when (this) {
+                is RpcResult -> this.toString()
+                is RpcFailed -> this.toString()
+                is RpcNoResponse -> null
+            }
+        }
+
     companion object {
-        fun success(id: KsonValue, result: KsonValue): RpcResponse {
-            return RpcResponse(id, result, null)
-        }
-
-        fun failed(id: KsonValue, code: Int, message: String, data: KsonValue? = null): RpcResponse {
-            return RpcResponse(id, KsonNull, RpcError(code, message, data ?: KsonNull))
-        }
-
-        fun error(id: KsonValue, error: RpcError): RpcResponse {
-            return RpcResponse(id, KsonNull, error)
-        }
-
         fun from(jo: KsonObject): RpcResponse? {
             if (!jo.verifyVersion) return null
             val id: KsonValue = jo[Rpc.ID] ?: KsonNull
             val result = jo[Rpc.RESULT]
-            if (result != null && id !is KsonNull) {
-                return success(id, result)
+            if (result != null && !id.isNull) {
+                return RpcResult(id, result)
             }
             val error = jo.getObject(Rpc.ERROR)
             if (error != null) {
                 val code: Int = error.getInt(Rpc.CODE) ?: 0
                 val message: String = error.getString(Rpc.MESSAGE) ?: "Failed"
-                return failed(id, code, message, error[Rpc.DATA])
+                return RpcFailed(id, code, message, error[Rpc.DATA])
             }
             return null
         }
@@ -67,6 +78,14 @@ class RpcResponse(val id: KsonValue, val result: KsonValue, val error: RpcError?
 }
 
 data class RpcError(val code: Int, val message: String, val data: KsonValue? = null) {
+
+    fun toJson(): KsonObject {
+        if (data == null || data.isNull) {
+            return ksonObject(Rpc.CODE to code, Rpc.MESSAGE to message)
+        }
+        return ksonObject(Rpc.CODE to code, Rpc.MESSAGE to message, Rpc.DATA to data)
+    }
+
     companion object {
         val parse = RpcError(32700, "Parse error")
         val invalidRequest = RpcError(32600, "Invalid Request")

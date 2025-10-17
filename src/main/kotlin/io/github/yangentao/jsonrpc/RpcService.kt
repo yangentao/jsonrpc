@@ -29,11 +29,11 @@ class RpcService(workerCount: Int = 4) {
         return client.batch(items)
     }
 
-    fun onRequest(request: RpcRequest): RpcResponse? {
+    fun onRequest(request: RpcRequest): RpcResponse {
         return server.onRequest(request)
     }
 
-    fun onRequest(context: RpcContext): RpcResponse? {
+    fun onRequest(context: RpcContext): RpcResponse {
         return server.dispatch(context)
     }
 
@@ -99,16 +99,16 @@ class RpcService(workerCount: Int = 4) {
         try {
             val jv = Kson.parse(textPacket) ?: return null
             if (jv is KsonObject) {
-                return onRecvPacket(jv, acceptor)?.toString()
+                return onRecvPacket(jv, acceptor)?.jsonText
             }
             if (jv is KsonArray) {
                 val ls = jv.objectList.mapNotNull {
                     onRecvPacket(it, acceptor)
-                }
+                }.filter { it !is RpcNoResponse }
                 return if (ls.isEmpty()) null else ksonArray(ls.map { it.toJson() }).toString()
             }
         } catch (re: RpcInvalidRequestException) {
-            return RpcResponse.error(re.id, RpcError.invalidRequest).toString()
+            return RpcFailed(re.id, RpcError.invalidRequest).toString()
         }
         return null
     }

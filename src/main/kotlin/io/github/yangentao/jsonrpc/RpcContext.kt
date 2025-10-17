@@ -19,7 +19,13 @@ open class RpcContext(val request: RpcRequest) {
     var committed: Boolean = false
         private set
 
+    /// 用于应用内部交流数据
     val attrs: AttrStore = AttrStore()
+
+    /// 外部（客户端）输入的额外数据， 比如Http Headers
+    val extras: LinkedHashMap<String, Any?> = LinkedHashMap()
+
+    val requireResponse: RpcResponse get() = response!!
 
     val hasParams: Boolean
         get() {
@@ -78,24 +84,56 @@ open class RpcContext(val request: RpcRequest) {
         return null
     }
 
+    fun successNotify() {
+        if (committed) error("Already Committed")
+        committed = true
+        this.response = RpcNoResponse
+    }
+
     fun success(result: KsonValue) {
         if (committed) error("Already Committed")
         committed = true
-        if (isNotify) return
-        this.response = RpcResponse(request.id, result, null)
+        this.response = if (isNotify) RpcNoResponse else RpcResult(request.id, result)
     }
 
     fun failed(code: Int, message: String, data: KsonValue? = null) {
-        if (committed) error("Already Committed")
-        committed = true
-        if (isNotify) return
-        this.response = RpcResponse(request.id, KsonNull, RpcError(code, message, data))
+        failed(RpcError(code, message, data))
     }
 
     fun failed(error: RpcError) {
         if (committed) error("Already Committed")
         committed = true
-        if (isNotify) return
-        this.response = RpcResponse(request.id, KsonNull, error)
+        this.response = if (isNotify) RpcNoResponse else RpcFailed(request.id, error)
+    }
+}
+
+object RpcContextAttribute {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.attrs.map[property.userName] as T
+    }
+
+    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.attrs.map.remove(property.userName)
+        } else {
+            inst.attrs.map[property.userName] = value
+        }
+    }
+}
+
+object RpcContextParameter {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
+        val ob = inst.params as? KsonObject ?: return null
+        val kv = ob[property.userName] ?: return null
+        return KsonDecoder.decode(property, kv) as? T
+    }
+}
+
+object RpcContextExtra {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
+        return inst.extras[property.userName] as? T
     }
 }

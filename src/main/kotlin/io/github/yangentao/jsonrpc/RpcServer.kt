@@ -22,29 +22,29 @@ class RpcServer() {
         return actionMap[method]
     }
 
-    fun onRequest(request: RpcRequest): RpcResponse? {
+    fun onRequest(request: RpcRequest): RpcResponse {
         return dispatch(RpcContext(request))
     }
 
-    fun dispatch(context: RpcContext): RpcResponse? {
+    fun dispatch(context: RpcContext): RpcResponse {
         val ac = find(context.method)
         if (ac == null) {
             context.failed(RpcError.methodNotFound)
-            return context.response
+            return context.requireResponse
         }
         try {
             val ls: List<RpcInterceptor> = interClasses.map { it.objectInstance ?: it.createInstance() }
             ls.forEach {
                 it.beforeAction(context, ac)
-                if (context.committed) return context.response
+                if (context.committed) return context.requireResponse
             }
             interObjects.forEach {
                 it.beforeAction(context, ac)
-                if (context.committed) return context.response
+                if (context.committed) return context.requireResponse
             }
             beforeActions.forEach {
                 it.invoke(context, ac)
-                if (context.committed) return context.response
+                if (context.committed) return context.requireResponse
             }
             ac.invoke(context)
             interObjects.forEach { it.afterAction(context, ac) }
@@ -60,7 +60,7 @@ class RpcServer() {
                 context.failed(RpcError.internal)
             }
         }
-        return context.response
+        return context.requireResponse
     }
 
     fun beforeLambda(lambda: Function2<RpcContext, RpcAction, Unit>) {

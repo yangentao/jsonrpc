@@ -27,15 +27,14 @@ object Rpc {
 
     fun detectPacket(jo: KsonObject): RpcPacket? {
         if (!jo.verifyVersion) return null
-        if (jo.containsKey(RESULT) || jo.containsKey(ERROR)) return RpcResponse.Companion.from(jo)
-        if (jo.containsKey(PARAMS)) return RpcRequest.Companion.from(jo)
-        if (jo.containsKey(METHOD)) return RpcRequest.Companion.from(jo)
+        if (jo.containsKey(RESULT) || jo.containsKey(ERROR)) return RpcResponse.from(jo)
+        if (jo.containsKey(PARAMS)) return RpcRequest.from(jo)
+        if (jo.containsKey(METHOD)) return RpcRequest.from(jo)
         return null
     }
 }
 
 open class RpcException(message: String) : Exception(message)
-class RpcParseException : RpcException("Parse Error")
 class RpcInvalidRequestException(val id: KsonValue) : RpcException("Invalid Request")
 
 sealed class RpcPacket(val version: String = Rpc.VERSION) {
@@ -55,7 +54,7 @@ sealed class RpcPacket(val version: String = Rpc.VERSION) {
     }
 }
 
-internal val RpcResponse.longID: Long get() = (this.id as KsonNum).data.toLong()
+
 
 internal val KsonObject.verifyVersion: Boolean get() = this.getString(Rpc.JSONRPC) == Rpc.VERSION
 
@@ -75,37 +74,5 @@ fun interface TextReceiver {
     fun onRecvText(text: String): Boolean
 }
 
-object RpcContextAttribute {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
-        return inst.attrs.map[property.userName] as T
-    }
-
-    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
-        if (value == null) {
-            inst.attrs.map.remove(property.userName)
-        } else {
-            inst.attrs.map[property.userName] = value
-        }
-    }
-}
-
-object RpcContextParameter {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
-        val ob = inst.params as? KsonObject ?: return null
-        val kv = ob[property.userName] ?: return null
-        return KsonDecoder.decode(property, kv) as? T
-    }
-}
-
-object RpcRequestParameter {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T : Any> getValue(inst: RpcRequest, property: KProperty<*>): T? {
-        val ob = inst.params as? KsonObject ?: return null
-        val kv = ob[property.userName] ?: return null
-        return KsonDecoder.decode(property, kv) as? T
-    }
-}
 
 

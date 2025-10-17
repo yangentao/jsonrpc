@@ -35,7 +35,6 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
     fun invoke(context: RpcContext) {
         val inst: Any? = instanceGroup()
         val request: RpcRequest = context.request
-        val reqID: KsonValue = request.id
 
         val r: Any? = when (request.params) {
             null, KsonNull -> {
@@ -57,7 +56,7 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 if (p.isOptional) {
                                     continue
                                 } else {
-                                    context.failed(RpcError.Companion.invalidParams)
+                                    context.failed(RpcError.invalidParams)
                                     return
                                 }
                             }
@@ -84,7 +83,7 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 val v = p.fromRpcValue(iter.next())
                                 ls.add(v)
                             } else if (!p.isOptional) {
-                                context.failed(RpcError.Companion.invalidParams)
+                                context.failed(RpcError.invalidParams)
                                 return
                             }
 
@@ -117,7 +116,7 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 } else if (p.isOptional) {
                                     continue
                                 } else {
-                                    context.failed(RpcError.Companion.invalidParams)
+                                    context.failed(RpcError.invalidParams)
                                     return
                                 }
                             }
@@ -128,15 +127,14 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
             }
 
             else -> {
-                context.failed(RpcError.Companion.invalidRequest)
+                context.failed(RpcError.invalidRequest)
                 return
             }
 
         }
 
         if (r is Unit) {
-//            context.failed(RpcError.invalidRequest)
-            context.success(KsonNull)
+            context.successNotify()
         } else {
             context.success(Kson.toKson(r))
         }

@@ -2,13 +2,16 @@
 
 package io.github.yangentao.jsonrpc
 
+import io.github.yangentao.anno.userName
 import io.github.yangentao.kson.*
+import kotlin.reflect.KProperty
 
 class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) : RpcPacket() {
     init {
         assert(id.isNull || id is KsonString || id is KsonNum)
         assert(method.isNotEmpty())
     }
+
     val hasParams: Boolean = when (params) {
         is KsonObject -> params.isNotEmpty()
         is KsonArray -> params.isNotEmpty()
@@ -20,15 +23,16 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
     override fun onJson(jo: KsonObject) {
         super.onJson(jo)
         when (id) {
-            is KsonString, is KsonNum, is KsonNull -> jo.putAny(Rpc.ID, id)
-            else -> error("json rpc id MUST be num or string")
+            KsonNull -> {}
+            is KsonString, is KsonNum -> jo.putAny(Rpc.ID, id)
+            else -> error("Json rpc id MUST be num or string")
         }
         jo.putString(Rpc.METHOD, method)
         when (params) {
             is KsonArray if params.isNotEmpty() -> jo.putArray(Rpc.PARAMS, params)
             is KsonObject if params.isNotEmpty() -> jo.putObject(Rpc.PARAMS, params)
             is KsonNull -> {}
-            else -> error("json rpc params MUST be an array or an object")
+            else -> error("Json rpc params MUST be an array or an object")
         }
     }
 
@@ -56,4 +60,14 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
         }
     }
 }
+
+object RpcRequestParameter {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T : Any> getValue(inst: RpcRequest, property: KProperty<*>): T? {
+        val ob = inst.params as? KsonObject ?: return null
+        val kv = ob[property.userName] ?: return null
+        return KsonDecoder.decode(property, kv) as? T
+    }
+}
+
 
