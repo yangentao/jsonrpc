@@ -38,7 +38,34 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
         val reqID: KsonValue = request.id
 
         val r: Any? = when (request.params) {
-            null, KsonNull -> action.call()
+            null, KsonNull -> {
+                val map = HashMap<KParameter, Any?>()
+                for (p in actionParams) {
+                    when (p.kind) {
+                        KParameter.Kind.INSTANCE, KParameter.Kind.EXTENSION_RECEIVER -> {
+                            if (inst != null) {
+                                map[p] = inst
+                            } else {
+                                error("Json RPC instance is null: " + request.method)
+                            }
+                        }
+
+                        KParameter.Kind.VALUE -> {
+                            if (p.acceptClass(RpcContext::class)) {
+                                map[p] = context
+                            } else {
+                                if (p.isOptional) {
+                                    continue
+                                } else {
+                                    context.failed(RpcError.Companion.invalidParams)
+                                    return
+                                }
+                            }
+                        }
+                    }
+                }
+                action.callBy(map)
+            }
 
             is KsonArray -> {
                 val ls = ArrayList<Any?>()
