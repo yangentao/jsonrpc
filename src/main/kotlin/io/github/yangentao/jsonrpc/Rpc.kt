@@ -2,9 +2,12 @@
 
 package io.github.yangentao.jsonrpc
 
+import io.github.yangentao.anno.userName
+import io.github.yangentao.kson.KsonDecoder
 import io.github.yangentao.kson.KsonNum
 import io.github.yangentao.kson.KsonObject
 import io.github.yangentao.kson.KsonValue
+import kotlin.reflect.KProperty
 
 object Rpc {
     const val JSONRPC = "jsonrpc"
@@ -71,3 +74,38 @@ fun interface TextSender {
 fun interface TextReceiver {
     fun onRecvText(text: String): Boolean
 }
+
+object RpcContextAttribute {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.attrs.map[property.userName] as T
+    }
+
+    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.attrs.map.remove(property.userName)
+        } else {
+            inst.attrs.map[property.userName] = value
+        }
+    }
+}
+
+object RpcContextParameter {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
+        val ob = inst.params as? KsonObject ?: return null
+        val kv = ob[property.userName] ?: return null
+        return KsonDecoder.decode(property, kv) as? T
+    }
+}
+
+object RpcRequestParameter {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T : Any> getValue(inst: RpcRequest, property: KProperty<*>): T? {
+        val ob = inst.params as? KsonObject ?: return null
+        val kv = ob[property.userName] ?: return null
+        return KsonDecoder.decode(property, kv) as? T
+    }
+}
+
+

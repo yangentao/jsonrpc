@@ -99,18 +99,3 @@ open class RpcContext(val request: RpcRequest) {
         this.response = RpcResponse(request.id, KsonNull, error)
     }
 }
-
-object RpcContextAttribute {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
-        return inst.attrs.map[property.userName] as T
-    }
-
-    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
-        if (value == null) {
-            inst.attrs.map.remove(property.userName)
-        } else {
-            inst.attrs.map[property.userName] = value
-        }
-    }
-}
