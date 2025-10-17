@@ -81,14 +81,18 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                         }
 
                         KParameter.Kind.VALUE -> {
-                            val jv = request.params[p.userName]
-                            if (jv != null) {
-                                map[p] = p.fromRpcValue(jv)
-                            } else if (p.isOptional) {
-                                continue
+                            if (p.acceptClass(RpcContext::class)) {
+                                map[p] = context
                             } else {
-                                context.failed(RpcError.Companion.invalidParams)
-                                return
+                                val jv = request.params[p.userName]
+                                if (jv != null) {
+                                    map[p] = p.fromRpcValue(jv)
+                                } else if (p.isOptional) {
+                                    continue
+                                } else {
+                                    context.failed(RpcError.Companion.invalidParams)
+                                    return
+                                }
                             }
                         }
                     }
