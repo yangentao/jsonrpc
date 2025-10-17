@@ -2,10 +2,7 @@
 
 package io.github.yangentao.jsonrpc
 
-import io.github.yangentao.kson.KsonArray
-import io.github.yangentao.kson.KsonNull
-import io.github.yangentao.kson.KsonObject
-import io.github.yangentao.kson.KsonValue
+import io.github.yangentao.kson.*
 import io.github.yangentao.types.AttrStore
 
 open class RpcContext(val request: RpcRequest) {
@@ -31,20 +28,52 @@ open class RpcContext(val request: RpcRequest) {
             }
         }
 
-    fun intParam(name: String): Int? {
+    fun getParam(name: String): KsonValue? {
+        return (params as? KsonObject)?.get(name)
+    }
+
+    fun getParam(index: Int): KsonValue? {
+        return (params as? KsonArray)?.getOrNull(index)
+    }
+
+    fun getInt(name: String): Int? {
         return (params as? KsonObject)?.getInt(name)
     }
 
-    fun longParam(name: String): Long? {
+    fun getLong(name: String): Long? {
         return (params as? KsonObject)?.getLong(name)
     }
 
-    fun stringParam(name: String): String? {
+    fun getString(name: String): String? {
         return (params as? KsonObject)?.getString(name)
     }
 
-    fun boolParam(name: String): Boolean? {
+    fun getBool(name: String): Boolean? {
         return (params as? KsonObject)?.getBool(name)
+    }
+
+    fun getInt(index: Int): Int? {
+        val kv = getParam(index) ?: return null
+        if (kv is KsonNum) return kv.data.toInt()
+        return null
+    }
+
+    fun getLong(index: Int): Long? {
+        val kv = getParam(index) ?: return null
+        if (kv is KsonNum) return kv.data.toLong()
+        return null
+    }
+
+    fun getString(index: Int): String? {
+        val kv = getParam(index) ?: return null
+        if (kv is KsonString) return kv.data
+        return null
+    }
+
+    fun getBool(index: Int): Boolean? {
+        val kv = getParam(index) ?: return null
+        if (kv is KsonBool) return kv.data
+        return null
     }
 
     fun success(result: KsonValue) {
