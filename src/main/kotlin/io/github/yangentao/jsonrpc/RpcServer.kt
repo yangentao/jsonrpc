@@ -34,19 +34,28 @@ class RpcServer() {
         }
         try {
             val ls: List<RpcInterceptor> = interClasses.map { it.objectInstance ?: it.createInstance() }
-            ls.forEach { it.beforeAction(context, ac) }
-            interObjects.forEach { it.beforeAction(context, ac) }
-            beforeActions.forEach { it.invoke(context, ac) }
+            ls.forEach {
+                it.beforeAction(context, ac)
+                if (context.committed) return context.response
+            }
+            interObjects.forEach {
+                it.beforeAction(context, ac)
+                if (context.committed) return context.response
+            }
+            beforeActions.forEach {
+                it.invoke(context, ac)
+                if (context.committed) return context.response
+            }
             ac.invoke(context)
-            afterActions.forEach { it.invoke(context, ac) }
             interObjects.forEach { it.afterAction(context, ac) }
+            afterActions.forEach { it.invoke(context, ac) }
             ls.forEach { it.afterAction(context, ac) }
         } catch (ex: Exception) {
             ex.printStackTrace()
             if (!context.committed) {
                 context.failed(RpcError.internalError(ex.message))
             }
-        }finally {
+        } finally {
             if (!context.committed) {
                 context.failed(RpcError.internal)
             }

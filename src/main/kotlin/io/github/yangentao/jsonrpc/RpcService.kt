@@ -10,8 +10,8 @@ import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 
 class RpcService(workerCount: Int = 4) {
-    private val server: RpcServer = RpcServer()
-    private val client: RpcClient = RpcClient(workerCount)
+    val server: RpcServer = RpcServer()
+    val client: RpcClient = RpcClient(workerCount)
 
     fun onResponse(response: RpcResponse) {
         client.onResponse(response)
