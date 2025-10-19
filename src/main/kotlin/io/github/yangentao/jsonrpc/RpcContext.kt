@@ -7,7 +7,8 @@ import io.github.yangentao.kson.*
 import io.github.yangentao.types.AttrStore
 import kotlin.reflect.KProperty
 
-open class RpcContext(val request: RpcRequest) {
+/// extras 外部（客户端）输入的额外数据， 比如Http Headers
+open class RpcContext(val request: RpcRequest, val extras: Map<String, Any>) {
     val id: KsonValue = request.id
     val method: String = request.method
     val params: KsonValue = request.params ?: KsonNull
@@ -21,9 +22,6 @@ open class RpcContext(val request: RpcRequest) {
 
     /// 用于应用内部交流数据
     val attrs: AttrStore = AttrStore()
-
-    /// 外部（客户端）输入的额外数据， 比如Http Headers
-    val extras: LinkedHashMap<String, Any?> = LinkedHashMap()
 
     val requireResponse: RpcResponse get() = response!!
 
