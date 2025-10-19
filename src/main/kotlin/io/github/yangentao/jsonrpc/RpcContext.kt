@@ -21,8 +21,6 @@ open class RpcContext(val request: RpcRequest, val session: RpcSession, val extr
 
     val requireResponse: RpcResponse get() = response!!
 
-    val paramsDelegate: RpcContextParameterDelegate by lazy { RpcContextParameterDelegate(this) }
-
     val hasParams: Boolean
         get() {
             return when (params) {
@@ -100,15 +98,6 @@ open class RpcContext(val request: RpcRequest, val session: RpcSession, val extr
         if (committed) error("Already Committed")
         committed = true
         this.response = if (isNotify) RpcNoResponse else RpcFailed(request.id, error)
-    }
-}
-
-class RpcContextParameterDelegate(val context: RpcContext) {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
-        val ob = context.params as? KsonObject ?: return null as T
-        val kv = ob[property.userName] ?: return null as T
-        return KsonDecoder.decode(property, kv) as T
     }
 }
 

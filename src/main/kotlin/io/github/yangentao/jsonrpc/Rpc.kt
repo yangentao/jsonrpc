@@ -3,6 +3,7 @@
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
+import io.github.yangentao.kson.KsonDecoder
 import io.github.yangentao.kson.KsonObject
 import io.github.yangentao.kson.KsonValue
 import kotlin.reflect.KProperty
@@ -116,5 +117,61 @@ object EmptyRpcSession : RpcSession {
     override fun putSession(name: String, value: Any?) {
     }
 }
+
+class MapRpcExtra(val map: Map<String, Any>) : RpcExtra {
+    override fun getExtra(name: String): Any? {
+        return map[name]
+    }
+}
+
+class MapRpcSession(val map: MutableMap<String, Any>) : RpcSession {
+    override fun removeSession(name: String) {
+        map.remove(name)
+    }
+
+    override fun getSession(name: String): Any? {
+        return map[name]
+    }
+
+    override fun putSession(name: String, value: Any?) {
+        if (value == null) {
+            map.remove(name)
+        } else {
+            map[name] = value
+        }
+    }
+}
+
+object RpcExtraParamDelegate {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcExtra, property: KProperty<*>): T {
+        return inst.getExtra(property.userName) as T
+    }
+}
+
+object RpcSessionParamDelegate {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcSession, property: KProperty<*>): T {
+        return inst.getSession(property.userName) as T
+    }
+
+    operator fun <T> setValue(inst: RpcSession, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.removeSession(property.userName)
+        } else {
+            inst.putSession(property.userName, value)
+        }
+    }
+}
+
+object RpcRequestParamDelegate {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcRequest, property: KProperty<*>): T {
+        val ob = inst.params as? KsonObject ?: return null as T
+        val kv = ob[property.userName] ?: return null as T
+        return KsonDecoder.decode(property, kv) as T
+    }
+}
+
 
 
