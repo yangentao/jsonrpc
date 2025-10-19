@@ -4,11 +4,10 @@ package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
 import io.github.yangentao.kson.*
-import io.github.yangentao.types.AttrStore
 import kotlin.reflect.KProperty
 
 /// extras 外部（客户端）输入的额外数据， 比如Http Headers
-open class RpcContext(val request: RpcRequest, val extras: Map<String, Any>) {
+open class RpcContext(val request: RpcRequest, val session: RpcSession, val extras: RpcExtra) {
     val id: KsonValue = request.id
     val method: String = request.method
     val params: KsonValue = request.params ?: KsonNull
@@ -19,9 +18,6 @@ open class RpcContext(val request: RpcRequest, val extras: Map<String, Any>) {
 
     var committed: Boolean = false
         private set
-
-    /// 用于应用内部交流数据
-    val attrs: AttrStore = AttrStore()
 
     val requireResponse: RpcResponse get() = response!!
 
@@ -105,21 +101,6 @@ open class RpcContext(val request: RpcRequest, val extras: Map<String, Any>) {
     }
 }
 
-object RpcContextAttribute {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
-        return inst.attrs.map[property.userName] as T
-    }
-
-    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
-        if (value == null) {
-            inst.attrs.map.remove(property.userName)
-        } else {
-            inst.attrs.map[property.userName] = value
-        }
-    }
-}
-
 object RpcContextParameter {
     @Suppress("UNCHECKED_CAST")
     operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
@@ -129,9 +110,24 @@ object RpcContextParameter {
     }
 }
 
-object RpcContextExtra {
+object RpcContextSessionPrpoerties {
     @Suppress("UNCHECKED_CAST")
-    operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
-        return inst.extras[property.userName] as? T
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.session.getSession(property.userName) as T
+    }
+
+    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.session.removeSession(property.userName)
+        } else {
+            inst.session.putSession(property.userName, value)
+        }
+    }
+}
+
+object RpcContextExtraProperties {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.extras.getExtra(property.userName) as T
     }
 }

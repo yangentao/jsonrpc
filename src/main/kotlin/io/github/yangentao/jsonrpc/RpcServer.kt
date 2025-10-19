@@ -22,8 +22,8 @@ class RpcServer() {
         return actionMap[method]
     }
 
-    fun onRequest(request: RpcRequest, extras: Map<String, Any>): RpcResponse {
-        return dispatch(RpcContext(request, extras))
+    fun onRequest(request: RpcRequest, session: RpcSession, extras: RpcExtra): RpcResponse {
+        return dispatch(RpcContext(request, session, extras))
     }
 
     fun dispatch(context: RpcContext): RpcResponse {

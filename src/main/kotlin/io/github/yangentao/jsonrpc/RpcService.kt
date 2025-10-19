@@ -29,8 +29,8 @@ class RpcService(workerCount: Int = 4) {
         return client.batch(items)
     }
 
-    fun onRequest(request: RpcRequest, extras: Map<String, Any>): RpcResponse {
-        return server.onRequest(request, extras)
+    fun onRequest(request: RpcRequest, session: RpcSession, extras: RpcExtra): RpcResponse {
+        return server.onRequest(request, session, extras)
     }
 
     fun onRequest(context: RpcContext): RpcResponse {
@@ -80,11 +80,11 @@ class RpcService(workerCount: Int = 4) {
         server.addGroup(group, noGroupName)
     }
 
-    fun onRecvPacket(jo: KsonObject, extras: Map<String, Any>, acceptor: (RpcRequest) -> Boolean): RpcResponse? {
+    fun onRecvPacket(jo: KsonObject, session: RpcSession, extras: RpcExtra, acceptor: (RpcRequest) -> Boolean): RpcResponse? {
         val p = Rpc.detectPacket(jo)
         if (p is RpcRequest) {
             return if (acceptor(p)) {
-                onRequest(p, extras)
+                onRequest(p, session, extras)
             } else {
                 null
             }
@@ -95,19 +95,19 @@ class RpcService(workerCount: Int = 4) {
         return null
     }
 
-    fun onRecv(textPacket: String, extras: Map<String, Any>): String? {
-        return onRecv(textPacket, extras) { true }
+    fun onRecv(textPacket: String, session: RpcSession, extras: RpcExtra): String? {
+        return onRecv(textPacket, session, extras) { true }
     }
 
-    fun onRecv(textPacket: String, extras: Map<String, Any>, acceptor: (RpcRequest) -> Boolean): String? {
+    fun onRecv(textPacket: String, session: RpcSession, extras: RpcExtra, acceptor: (RpcRequest) -> Boolean): String? {
         try {
             val jv = Kson.parse(textPacket) ?: return null
             if (jv is KsonObject) {
-                return onRecvPacket(jv, extras, acceptor)?.jsonText
+                return onRecvPacket(jv, session, extras, acceptor)?.jsonText
             }
             if (jv is KsonArray) {
                 val ls = jv.objectList.mapNotNull {
-                    onRecvPacket(it, extras, acceptor)
+                    onRecvPacket(it, session, extras, acceptor)
                 }.filter { it !is RpcNoResponse }
                 return if (ls.isEmpty()) null else ksonArray(ls.map { it.toJson() }).toString()
             }

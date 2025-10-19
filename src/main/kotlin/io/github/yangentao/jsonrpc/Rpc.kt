@@ -3,8 +3,6 @@
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
-import io.github.yangentao.kson.KsonDecoder
-import io.github.yangentao.kson.KsonNum
 import io.github.yangentao.kson.KsonObject
 import io.github.yangentao.kson.KsonValue
 import kotlin.reflect.KProperty
@@ -54,8 +52,6 @@ sealed class RpcPacket(val version: String = Rpc.VERSION) {
     }
 }
 
-
-
 internal val KsonObject.verifyVersion: Boolean get() = this.getString(Rpc.JSONRPC) == Rpc.VERSION
 
 internal fun ksonObject(params: List<Pair<String, Any?>>): KsonObject {
@@ -74,5 +70,54 @@ fun interface TextReceiver {
     fun onRecvText(text: String): Boolean
 }
 
+interface RpcSession {
+    fun removeSession(name: String)
+    fun getSession(name: String): Any?
+    fun putSession(name: String, value: Any?)
+}
 
+interface RpcExtra {
+    fun getExtra(name: String): Any?
+}
+
+object RpcEmptyExtra : RpcExtra {
+    override fun getExtra(name: String): Any? {
+        return null
+    }
+
+}
+
+object RpcEmptySession : RpcSession {
+    override fun removeSession(name: String) {
+    }
+
+    override fun getSession(name: String): Any? {
+        return null
+    }
+
+    override fun putSession(name: String, value: Any?) {
+    }
+}
+
+object RpcSessionPrpoerties {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcSession, property: KProperty<*>): T {
+        return inst.getSession(property.userName) as T
+    }
+
+    operator fun <T> setValue(inst: RpcSession, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.removeSession(property.userName)
+        } else {
+            inst.putSession(property.userName, value)
+        }
+    }
+}
+
+object RpcExtraProperties {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcExtra, property: KProperty<*>): T {
+        return inst.getExtra(property.userName) as T
+    }
+}
 
