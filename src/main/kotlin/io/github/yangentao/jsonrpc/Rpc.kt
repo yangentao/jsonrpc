@@ -74,20 +74,38 @@ interface RpcSession {
     fun removeSession(name: String)
     fun getSession(name: String): Any?
     fun putSession(name: String, value: Any?)
+
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: Any?, property: KProperty<*>): T {
+        return this.getSession(property.userName) as T
+    }
+
+    operator fun <T> setValue(inst: Any?, property: KProperty<*>, value: T) {
+        if (value == null) {
+            this.removeSession(property.userName)
+        } else {
+            this.putSession(property.userName, value)
+        }
+    }
 }
 
 interface RpcExtra {
     fun getExtra(name: String): Any?
+
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: Any?, property: KProperty<*>): T {
+        return this.getExtra(property.userName) as T
+    }
 }
 
-object RpcEmptyExtra : RpcExtra {
+object EmptyRpcExtra : RpcExtra {
     override fun getExtra(name: String): Any? {
         return null
     }
 
 }
 
-object RpcEmptySession : RpcSession {
+object EmptyRpcSession : RpcSession {
     override fun removeSession(name: String) {
     }
 
@@ -99,25 +117,4 @@ object RpcEmptySession : RpcSession {
     }
 }
 
-object RpcSessionPrpoerties {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcSession, property: KProperty<*>): T {
-        return inst.getSession(property.userName) as T
-    }
-
-    operator fun <T> setValue(inst: RpcSession, property: KProperty<*>, value: T) {
-        if (value == null) {
-            inst.removeSession(property.userName)
-        } else {
-            inst.putSession(property.userName, value)
-        }
-    }
-}
-
-object RpcExtraProperties {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcExtra, property: KProperty<*>): T {
-        return inst.getExtra(property.userName) as T
-    }
-}
 

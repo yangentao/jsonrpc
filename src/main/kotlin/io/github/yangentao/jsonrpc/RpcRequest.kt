@@ -36,6 +36,13 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
         }
     }
 
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcRequest, property: KProperty<*>): T {
+        val ob = inst.params as? KsonObject ?: return null as T
+        val kv = ob[property.userName] ?: return null as T
+        return KsonDecoder.decode(property, kv) as T
+    }
+
     companion object {
         fun notify(method: String, params: KsonValue?): RpcRequest {
             return RpcRequest(KsonNull, method, params)
@@ -58,15 +65,6 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
         fun from(ja: KsonArray): List<RpcRequest> {
             return ja.objectList.mapNotNull { from(it) }
         }
-    }
-}
-
-object RpcRequestParameter {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T : Any> getValue(inst: RpcRequest, property: KProperty<*>): T? {
-        val ob = inst.params as? KsonObject ?: return null
-        val kv = ob[property.userName] ?: return null
-        return KsonDecoder.decode(property, kv) as? T
     }
 }
 

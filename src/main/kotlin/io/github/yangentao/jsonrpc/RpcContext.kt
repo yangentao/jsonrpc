@@ -21,6 +21,8 @@ open class RpcContext(val request: RpcRequest, val session: RpcSession, val extr
 
     val requireResponse: RpcResponse get() = response!!
 
+    val paramsDelegate: RpcContextParameterDelegate by lazy { RpcContextParameterDelegate(this) }
+
     val hasParams: Boolean
         get() {
             return when (params) {
@@ -101,33 +103,13 @@ open class RpcContext(val request: RpcRequest, val session: RpcSession, val extr
     }
 }
 
-object RpcContextParameter {
+class RpcContextParameterDelegate(val context: RpcContext) {
     @Suppress("UNCHECKED_CAST")
-    operator fun <T : Any> getValue(inst: RpcContext, property: KProperty<*>): T? {
-        val ob = inst.params as? KsonObject ?: return null
-        val kv = ob[property.userName] ?: return null
-        return KsonDecoder.decode(property, kv) as? T
+    operator fun <T> getValue(thisRef: Any?, property: KProperty<*>): T {
+        val ob = context.params as? KsonObject ?: return null as T
+        val kv = ob[property.userName] ?: return null as T
+        return KsonDecoder.decode(property, kv) as T
     }
 }
 
-object RpcContextSessionPrpoerties {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
-        return inst.session.getSession(property.userName) as T
-    }
 
-    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
-        if (value == null) {
-            inst.session.removeSession(property.userName)
-        } else {
-            inst.session.putSession(property.userName, value)
-        }
-    }
-}
-
-object RpcContextExtraProperties {
-    @Suppress("UNCHECKED_CAST")
-    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
-        return inst.extras.getExtra(property.userName) as T
-    }
-}
