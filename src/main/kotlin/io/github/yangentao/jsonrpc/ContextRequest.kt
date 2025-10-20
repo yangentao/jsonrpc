@@ -7,7 +7,7 @@ import io.github.yangentao.kson.*
 import kotlin.reflect.KProperty
 
 /// extras 外部（客户端）输入的额外数据， 比如Http Headers
-open class RpcContext(val request: RpcRequest, val session: RpcSession, val extras: RpcExtra) {
+open class ContextRequest(val context: RpcContext, val request: RpcRequest) {
     val id: KsonValue = request.id
     val method: String = request.method
     val params: KsonValue = request.params ?: KsonNull
@@ -101,4 +101,44 @@ open class RpcContext(val request: RpcRequest, val session: RpcSession, val extr
     }
 }
 
+open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), val extras: Map<String, Any> = emptyMap()) {
+    val outputs: MutableMap<String, Any> = LinkedHashMap()
+}
+
+object RpcContextSessions {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.session[property.userName] as T
+    }
+
+    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.session.remove(property.userName)
+        } else {
+            inst.session[property.userName] = value
+        }
+    }
+}
+
+object RpcContextOutputs {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.outputs[property.userName] as T
+    }
+
+    operator fun <T> setValue(inst: RpcContext, property: KProperty<*>, value: T) {
+        if (value == null) {
+            inst.outputs.remove(property.userName)
+        } else {
+            inst.outputs[property.userName] = value
+        }
+    }
+}
+
+object RpcContextExtras {
+    @Suppress("UNCHECKED_CAST")
+    operator fun <T> getValue(inst: RpcContext, property: KProperty<*>): T {
+        return inst.extras[property.userName] as T
+    }
+}
 

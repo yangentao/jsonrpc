@@ -22,11 +22,11 @@ class RpcServer() {
         return actionMap[method]
     }
 
-    fun onRequest(request: RpcRequest, session: RpcSession, extras: RpcExtra): RpcResponse {
-        return dispatch(RpcContext(request, session, extras))
+    fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
+        return dispatch(ContextRequest(context, request))
     }
 
-    fun dispatch(context: RpcContext): RpcResponse {
+    fun dispatch(context: ContextRequest): RpcResponse {
         val ac = find(context.method)
         if (ac == null) {
             context.failed(RpcError.methodNotFound)
@@ -63,11 +63,11 @@ class RpcServer() {
         return context.requireResponse
     }
 
-    fun beforeLambda(lambda: Function2<RpcContext, RpcAction, Unit>) {
+    fun beforeLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
         beforeActions += RpcLambdaInterceptor(lambda)
     }
 
-    fun afterLambda(lambda: Function2<RpcContext, RpcAction, Unit>) {
+    fun afterLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
         afterActions += RpcLambdaInterceptor(lambda)
     }
 
@@ -140,16 +140,16 @@ private fun KClass<*>.rpcActions(): List<KFunction<*>> {
 }
 
 interface RpcInterceptor {
-    fun beforeAction(context: RpcContext, action: RpcAction)
-    fun afterAction(context: RpcContext, action: RpcAction) {}
+    fun beforeAction(context: ContextRequest, action: RpcAction)
+    fun afterAction(context: ContextRequest, action: RpcAction) {}
 }
 
 internal interface RpcActionInterceptor {
-    fun invoke(context: RpcContext, action: RpcAction)
+    fun invoke(context: ContextRequest, action: RpcAction)
 }
 
-internal class RpcLambdaInterceptor(val lambda: Function2<RpcContext, RpcAction, Unit>) : RpcActionInterceptor {
-    override fun invoke(context: RpcContext, action: RpcAction) {
+internal class RpcLambdaInterceptor(val lambda: Function2<ContextRequest, RpcAction, Unit>) : RpcActionInterceptor {
+    override fun invoke(context: ContextRequest, action: RpcAction) {
         lambda.invoke(context, action)
     }
 
@@ -164,16 +164,20 @@ internal class RpcFuncInterceptor(val func: KFunction<Unit>, val funcClass: KCla
         return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.createInstanceX()
     }
 
-    override fun invoke(context: RpcContext, action: RpcAction) {
+    override fun invoke(context: ContextRequest, action: RpcAction) {
         val map = LinkedHashMap<KParameter, Any?>()
         for (p in actionParams) {
             val v: Any? = when (p.kind) {
                 KParameter.Kind.INSTANCE, KParameter.Kind.EXTENSION_RECEIVER -> instanceOwner()
                 KParameter.Kind.VALUE -> {
-                    if (p.acceptClass(RpcContext::class)) {
+                    if (p.acceptClass(ContextRequest::class)) {
                         context
                     } else if (p.acceptClass(RpcAction::class)) {
                         action
+                    } else if (p.acceptClass(RpcContext::class)) {
+                        context.context
+                    } else if (p.acceptClass(RpcRequest::class)) {
+                        context.request
                     } else error("Interceptor parameter error: ${p.name}, should be: func(RpcContext, RpcAction)")
                 }
             }
