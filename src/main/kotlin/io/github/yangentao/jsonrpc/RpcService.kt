@@ -33,8 +33,8 @@ class RpcService(workerCount: Int = 4) {
         return server.onRequest(context, request)
     }
 
-    fun onRequest(context: ContextRequest): RpcResponse {
-        return server.dispatch(context)
+    fun onRequest(contextRequest: ContextRequest): RpcResponse {
+        return server.dispatch(contextRequest)
     }
 
     fun beforeLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
