@@ -3,6 +3,9 @@
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
+import io.github.yangentao.kson.Kson
+import io.github.yangentao.kson.KsonNull
+import io.github.yangentao.kson.KsonValue
 import io.github.yangentao.types.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
@@ -23,12 +26,7 @@ class RpcServer() {
     }
 
     fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
-
-        val ac = find(request.method)
-        if (ac == null) {
-            context.failed(request.id, RpcError.methodNotFound)
-            return context.response
-        }
+        val ac = find(request.method) ?: return context.failed(request.id, RpcError.methodNotFound)
         try {
             val ls: List<RpcInterceptor> = interClasses.map { it.objectInstance ?: it.createInstance() }
             ls.forEach {
@@ -43,10 +41,23 @@ class RpcServer() {
                 it.invoke(context, request, ac)
                 if (context.committed) return context.response
             }
-            ac.invoke(context, request)
+            val r = ac.invoke(context, request)
+            if (!context.committed) {
+                when (r) {
+                    null -> context.success(request.id, KsonNull)
+                    Unit -> context.response(RpcNoResponse)
+                    is RpcError -> context.failed(request.id, r)
+                    is RpcResponse -> context.response(r)
+                    is KsonValue -> context.success(request.id, r)
+                    else -> context.success(request.id, Kson.toKson(r))
+                }
+            }
+
             interObjects.forEach { it.afterAction(context, request, ac) }
             afterActions.forEach { it.invoke(context, request, ac) }
             ls.forEach { it.afterAction(context, request, ac) }
+        } catch (re: RpcException) {
+            return context.tryError(re)
         } catch (ex: Exception) {
             ex.printStackTrace()
             if (!context.committed) {
@@ -180,4 +191,9 @@ internal class RpcFuncInterceptor(val func: KFunction<Unit>, val funcClass: KCla
         }
         func.callBy(map)
     }
+}
+
+private fun RpcContext.tryError(re: RpcException): RpcResponse {
+    if (!committed) this.failed(re.id, re.error)
+    return this.response
 }

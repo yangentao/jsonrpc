@@ -99,16 +99,14 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
             return RpcRequest(KsonNum(Rpc.nextID), method, params)
         }
 
-        @Throws(RpcInvalidRequestException::class)
         fun from(jo: KsonObject): RpcRequest? {
             if (!jo.verifyVersion) return null
             val id: KsonValue = jo[Rpc.ID] ?: KsonNull
-            val method: String = jo.getString(Rpc.METHOD) ?: throw RpcInvalidRequestException(id)
+            val method: String = jo.getString(Rpc.METHOD) ?: return null
             val params: KsonValue? = jo[Rpc.PARAMS]
             return RpcRequest(id, method, params)
         }
 
-        @Throws(RpcInvalidRequestException::class)
         fun from(ja: KsonArray): List<RpcRequest> {
             return ja.objectList.mapNotNull { from(it) }
         }

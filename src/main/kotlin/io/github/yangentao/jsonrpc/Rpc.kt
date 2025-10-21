@@ -2,6 +2,7 @@
 
 package io.github.yangentao.jsonrpc
 
+import io.github.yangentao.kson.KsonNull
 import io.github.yangentao.kson.KsonObject
 import io.github.yangentao.kson.KsonValue
 
@@ -30,8 +31,8 @@ object Rpc {
     }
 }
 
-open class RpcException(message: String) : Exception(message)
-class RpcInvalidRequestException(val id: KsonValue) : RpcException("Invalid Request")
+open class RpcException(val error: RpcError, val id: KsonValue = KsonNull) : Exception(error.message) {
+}
 
 sealed class RpcPacket(val version: String = Rpc.VERSION) {
     fun toJson(): KsonObject {

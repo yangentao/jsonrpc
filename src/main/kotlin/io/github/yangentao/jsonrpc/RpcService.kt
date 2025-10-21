@@ -2,10 +2,7 @@
 
 package io.github.yangentao.jsonrpc
 
-import io.github.yangentao.kson.Kson
-import io.github.yangentao.kson.KsonArray
-import io.github.yangentao.kson.KsonObject
-import io.github.yangentao.kson.ksonArray
+import io.github.yangentao.kson.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
 
@@ -107,8 +104,10 @@ class RpcService(workerCount: Int = 4) {
                 }.filter { it !is RpcNoResponse }
                 return if (ls.isEmpty()) null else ksonArray(ls.map { it.toJson() }).toString()
             }
-        } catch (re: RpcInvalidRequestException) {
-            return RpcFailed(re.id, RpcError.invalidRequest).toString()
+        } catch (re: RpcException) {
+            return RpcFailed(re.id, re.error).toString()
+        } catch (e: Exception) {
+            return RpcFailed(KsonNull, RpcError.internalError(e.message)).toString()
         }
         return null
     }

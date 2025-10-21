@@ -20,16 +20,18 @@ open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), va
         this.responseValue = response
     }
 
-    fun success(id: KsonValue, result: KsonValue) {
+    fun success(id: KsonValue, result: KsonValue): RpcResponse {
         response(if (id.isNull) RpcNoResponse else RpcResult(id, result))
+        return this.response
     }
 
-    fun failed(id: KsonValue, code: Int, message: String, data: KsonValue? = null) {
-        failed(id, RpcError(code, message, data))
+    fun failed(id: KsonValue, code: Int, message: String, data: KsonValue? = null): RpcResponse {
+        return failed(id, RpcError(code, message, data))
     }
 
-    fun failed(id: KsonValue, error: RpcError) {
+    fun failed(id: KsonValue, error: RpcError): RpcResponse {
         response(if (id.isNull) RpcNoResponse else RpcFailed(id, error))
+        return this.response
     }
 }
 

@@ -32,10 +32,10 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
         return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.createInstance()
     }
 
-    fun invoke(context: RpcContext, request: RpcRequest) {
+    fun invoke(context: RpcContext, request: RpcRequest): Any? {
         val inst: Any? = instanceGroup()
 
-        val r: Any? = when (request.params) {
+        when (request.params) {
             null, KsonNull -> {
                 val map = HashMap<KParameter, Any?>()
                 for (p in actionParams) {
@@ -57,14 +57,13 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 if (p.isOptional) {
                                     continue
                                 } else {
-                                    context.failed(request.id, RpcError.invalidParams)
-                                    return
+                                    return RpcError.invalidParams
                                 }
                             }
                         }
                     }
                 }
-                action.callBy(map)
+                return action.callBy(map)
             }
 
             is KsonArray -> {
@@ -86,15 +85,13 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 val v = p.fromRpcValue(iter.next())
                                 ls.add(v)
                             } else if (!p.isOptional) {
-                                context.failed(request.id, RpcError.invalidParams)
-                                return
+                                return RpcError.invalidParams
                             }
 
                         }
                     }
-
                 }
-                action.call(*ls.toTypedArray())
+                return action.call(*ls.toTypedArray())
             }
 
             is KsonObject -> {
@@ -121,30 +118,18 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 } else if (p.isOptional) {
                                     continue
                                 } else {
-                                    context.failed(request.id, RpcError.invalidParams)
-                                    return
+                                    return RpcError.invalidParams
                                 }
                             }
                         }
                     }
                 }
-                action.callBy(map)
+                return action.callBy(map)
             }
 
-            else -> {
-                context.failed(request.id, RpcError.invalidRequest)
-                return
-            }
-
-        }
-
-        if (r is Unit) {
-            context.response(RpcNoResponse)
-        } else {
-            context.success(request.id, Kson.toKson(r))
+            else -> return RpcError.invalidRequest
         }
     }
-
 }
 
 private fun KParameter.fromRpcValue(jv: KsonValue): Any? {
