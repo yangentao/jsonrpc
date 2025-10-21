@@ -107,7 +107,7 @@ data class RpcError(val code: Int, val message: String, val data: KsonValue? = n
 }
 
 fun RpcError.exception(id: KsonValue = KsonNull): RpcException {
-    return RpcException(this, id)
+    return RpcException(id, this)
 }
 
 

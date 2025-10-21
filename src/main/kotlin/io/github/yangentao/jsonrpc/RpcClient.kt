@@ -53,7 +53,7 @@ class RpcClient(workerCount: Int = 4) {
             when (response) {
                 is RpcNoResponse -> {}
                 is RpcResult -> info.callback.onResult(response.result)
-                is RpcFailed -> info.callback.onError(response.error)
+                is RpcFailed -> info.callback.onError(RpcException(response.id, response.error))
             }
         }
     }
@@ -108,7 +108,7 @@ private data class RemoteAction(val request: RpcRequest, val callback: RpcCallba
 
 interface RpcCallback {
     fun onResult(result: KsonValue)
-    fun onError(error: RpcError)
+    fun onError(error: RpcException)
     fun onTimeout()
 }
 
