@@ -12,13 +12,12 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
         assert(method.isNotEmpty())
     }
 
+    val isNotify: Boolean get() = id is KsonNull
     val hasParams: Boolean = when (params) {
         is KsonObject -> params.isNotEmpty()
         is KsonArray -> params.isNotEmpty()
         else -> false
     }
-
-    val isNotify: Boolean get() = id is KsonNull
 
     fun getParam(name: String): KsonValue? {
         return (params as? KsonObject)?.get(name)

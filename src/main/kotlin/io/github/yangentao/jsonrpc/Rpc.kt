@@ -2,11 +2,8 @@
 
 package io.github.yangentao.jsonrpc
 
-import io.github.yangentao.anno.userName
-import io.github.yangentao.kson.KsonDecoder
 import io.github.yangentao.kson.KsonObject
 import io.github.yangentao.kson.KsonValue
-import kotlin.reflect.KProperty
 
 object Rpc {
     const val JSONRPC = "jsonrpc"
@@ -62,15 +59,6 @@ internal fun ksonObject(params: List<Pair<String, Any?>>): KsonObject {
     }
     return jo
 }
-
-fun interface TextSender {
-    fun sendText(text: String): Boolean
-}
-
-fun interface TextReceiver {
-    fun onRecvText(text: String): Boolean
-}
-
 
 
 

@@ -22,52 +22,49 @@ class RpcServer() {
         return actionMap[method]
     }
 
-    fun onRequest(contextRequest: RpcContext, request: RpcRequest): RpcResponse {
-        return dispatch(ContextRequest(contextRequest, request))
-    }
+    fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
 
-    fun dispatch(contextRequest: ContextRequest): RpcResponse {
-        val ac = find(contextRequest.method)
+        val ac = find(request.method)
         if (ac == null) {
-            contextRequest.failed(RpcError.methodNotFound)
-            return contextRequest.requireResponse
+            context.failed(request.id, RpcError.methodNotFound)
+            return context.response
         }
         try {
             val ls: List<RpcInterceptor> = interClasses.map { it.objectInstance ?: it.createInstance() }
             ls.forEach {
-                it.beforeAction(contextRequest, ac)
-                if (contextRequest.committed) return contextRequest.requireResponse
+                it.beforeAction(context, request, ac)
+                if (context.committed) return context.response
             }
             interObjects.forEach {
-                it.beforeAction(contextRequest, ac)
-                if (contextRequest.committed) return contextRequest.requireResponse
+                it.beforeAction(context, request, ac)
+                if (context.committed) return context.response
             }
             beforeActions.forEach {
-                it.invoke(contextRequest, ac)
-                if (contextRequest.committed) return contextRequest.requireResponse
+                it.invoke(context, request, ac)
+                if (context.committed) return context.response
             }
-            ac.invoke(contextRequest)
-            interObjects.forEach { it.afterAction(contextRequest, ac) }
-            afterActions.forEach { it.invoke(contextRequest, ac) }
-            ls.forEach { it.afterAction(contextRequest, ac) }
+            ac.invoke(context, request)
+            interObjects.forEach { it.afterAction(context, request, ac) }
+            afterActions.forEach { it.invoke(context, request, ac) }
+            ls.forEach { it.afterAction(context, request, ac) }
         } catch (ex: Exception) {
             ex.printStackTrace()
-            if (!contextRequest.committed) {
-                contextRequest.failed(RpcError.internalError(ex.message))
+            if (!context.committed) {
+                context.failed(request.id, RpcError.internalError(ex.message))
             }
         } finally {
-            if (!contextRequest.committed) {
-                contextRequest.failed(RpcError.internal)
+            if (!context.committed) {
+                context.failed(request.id, RpcError.internal)
             }
         }
-        return contextRequest.requireResponse
+        return context.response
     }
 
-    fun beforeLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
+    fun beforeLambda(lambda: Function3<RpcContext, RpcRequest, RpcAction, Unit>) {
         beforeActions += RpcLambdaInterceptor(lambda)
     }
 
-    fun afterLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
+    fun afterLambda(lambda: Function3<RpcContext, RpcRequest, RpcAction, Unit>) {
         afterActions += RpcLambdaInterceptor(lambda)
     }
 
@@ -140,17 +137,17 @@ private fun KClass<*>.rpcActions(): List<KFunction<*>> {
 }
 
 interface RpcInterceptor {
-    fun beforeAction(contextRequest: ContextRequest, action: RpcAction)
-    fun afterAction(contextRequest: ContextRequest, action: RpcAction) {}
+    fun beforeAction(context: RpcContext, request: RpcRequest, action: RpcAction)
+    fun afterAction(context: RpcContext, request: RpcRequest, action: RpcAction) {}
 }
 
 internal interface RpcActionInterceptor {
-    fun invoke(contextRequest: ContextRequest, action: RpcAction)
+    fun invoke(context: RpcContext, request: RpcRequest, action: RpcAction)
 }
 
-internal class RpcLambdaInterceptor(val lambda: Function2<ContextRequest, RpcAction, Unit>) : RpcActionInterceptor {
-    override fun invoke(contextRequest: ContextRequest, action: RpcAction) {
-        lambda.invoke(contextRequest, action)
+internal class RpcLambdaInterceptor(val lambda: Function3<RpcContext, RpcRequest, RpcAction, Unit>) : RpcActionInterceptor {
+    override fun invoke(context: RpcContext, request: RpcRequest, action: RpcAction) {
+        lambda.invoke(context, request, action)
     }
 
 }
@@ -164,20 +161,18 @@ internal class RpcFuncInterceptor(val func: KFunction<Unit>, val funcClass: KCla
         return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.createInstanceX()
     }
 
-    override fun invoke(contextRequest: ContextRequest, action: RpcAction) {
+    override fun invoke(context: RpcContext, request: RpcRequest, action: RpcAction) {
         val map = LinkedHashMap<KParameter, Any?>()
         for (p in actionParams) {
             val v: Any? = when (p.kind) {
                 KParameter.Kind.INSTANCE, KParameter.Kind.EXTENSION_RECEIVER -> instanceOwner()
                 KParameter.Kind.VALUE -> {
-                    if (p.acceptClass(ContextRequest::class)) {
-                        contextRequest
+                    if (p.acceptClass(RpcContext::class)) {
+                        context
+                    } else if (p.acceptClass(RpcRequest::class)) {
+                        request
                     } else if (p.acceptClass(RpcAction::class)) {
                         action
-                    } else if (p.acceptClass(RpcContext::class)) {
-                        contextRequest.context
-                    } else if (p.acceptClass(RpcRequest::class)) {
-                        contextRequest.request
                     } else error("Interceptor parameter error: ${p.name}, should be: func(RpcContext, RpcAction)")
                 }
             }

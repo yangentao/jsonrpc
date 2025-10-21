@@ -33,15 +33,11 @@ class RpcService(workerCount: Int = 4) {
         return server.onRequest(context, request)
     }
 
-    fun onRequest(contextRequest: ContextRequest): RpcResponse {
-        return server.dispatch(contextRequest)
-    }
-
-    fun beforeLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
+    fun beforeLambda(lambda: Function3<RpcContext, RpcRequest, RpcAction, Unit>) {
         server.beforeLambda(lambda)
     }
 
-    fun afterLambda(lambda: Function2<ContextRequest, RpcAction, Unit>) {
+    fun afterLambda(lambda: Function3<RpcContext, RpcRequest, RpcAction, Unit>) {
         server.afterLambda(lambda)
     }
 
@@ -80,7 +76,7 @@ class RpcService(workerCount: Int = 4) {
         server.addGroup(group, noGroupName)
     }
 
-    fun onRecvPacket(context: RpcContext, jo: KsonObject, acceptor: (RpcRequest) -> Boolean): RpcResponse? {
+    private fun onRecvPacket(context: RpcContext, jo: KsonObject, acceptor: (RpcRequest) -> Boolean): RpcResponse? {
         val p = Rpc.detectPacket(jo)
         if (p is RpcRequest) {
             return if (acceptor(p)) {

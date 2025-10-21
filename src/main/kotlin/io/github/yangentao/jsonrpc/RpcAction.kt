@@ -32,9 +32,8 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
         return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.createInstance()
     }
 
-    fun invoke(contextRequest: ContextRequest) {
+    fun invoke(context: RpcContext, request: RpcRequest) {
         val inst: Any? = instanceGroup()
-        val request: RpcRequest = contextRequest.request
 
         val r: Any? = when (request.params) {
             null, KsonNull -> {
@@ -50,17 +49,15 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                         }
 
                         KParameter.Kind.VALUE -> {
-                            if (p.acceptClass(ContextRequest::class)) {
-                                map[p] = contextRequest
-                            } else if (p.acceptClass(RpcContext::class)) {
-                                map[p] = contextRequest.context
+                            if (p.acceptClass(RpcContext::class)) {
+                                map[p] = context
                             } else if (p.acceptClass(RpcRequest::class)) {
-                                map[p] = contextRequest.request
+                                map[p] = request
                             } else {
                                 if (p.isOptional) {
                                     continue
                                 } else {
-                                    contextRequest.failed(RpcError.invalidParams)
+                                    context.failed(request.id, RpcError.invalidParams)
                                     return
                                 }
                             }
@@ -81,17 +78,15 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                         }
 
                         KParameter.Kind.VALUE -> {
-                            if (p.acceptClass(ContextRequest::class)) {
-                                ls.add(contextRequest)
-                            } else if (p.acceptClass(RpcContext::class)) {
-                                ls.add(contextRequest.context)
+                            if (p.acceptClass(RpcContext::class)) {
+                                ls.add(context)
                             } else if (p.acceptClass(RpcRequest::class)) {
-                                ls.add(contextRequest.request)
+                                ls.add(request)
                             } else if (iter.hasNext()) {
                                 val v = p.fromRpcValue(iter.next())
                                 ls.add(v)
                             } else if (!p.isOptional) {
-                                contextRequest.failed(RpcError.invalidParams)
+                                context.failed(request.id, RpcError.invalidParams)
                                 return
                             }
 
@@ -115,12 +110,10 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                         }
 
                         KParameter.Kind.VALUE -> {
-                            if (p.acceptClass(ContextRequest::class)) {
-                                map[p] = contextRequest
-                            } else if (p.acceptClass(RpcContext::class)) {
-                                map[p] = contextRequest.context
+                            if (p.acceptClass(RpcContext::class)) {
+                                map[p] = context
                             } else if (p.acceptClass(RpcRequest::class)) {
-                                map[p] = contextRequest.request
+                                map[p] = request
                             } else {
                                 val jv = request.params[p.userName]
                                 if (jv != null) {
@@ -128,7 +121,7 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 } else if (p.isOptional) {
                                     continue
                                 } else {
-                                    contextRequest.failed(RpcError.invalidParams)
+                                    context.failed(request.id, RpcError.invalidParams)
                                     return
                                 }
                             }
@@ -139,16 +132,16 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
             }
 
             else -> {
-                contextRequest.failed(RpcError.invalidRequest)
+                context.failed(request.id, RpcError.invalidRequest)
                 return
             }
 
         }
 
         if (r is Unit) {
-            contextRequest.successNotify()
+            context.response(RpcNoResponse)
         } else {
-            contextRequest.success(Kson.toKson(r))
+            context.success(request.id, Kson.toKson(r))
         }
     }
 
