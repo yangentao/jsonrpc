@@ -3,6 +3,7 @@
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
+import io.github.yangentao.kson.JsonResult
 import io.github.yangentao.kson.Kson
 import io.github.yangentao.kson.KsonNull
 import io.github.yangentao.kson.KsonValue
@@ -49,6 +50,19 @@ class RpcServer() {
                     is RpcError -> context.failed(request.id, r)
                     is RpcResponse -> context.response(r)
                     is KsonValue -> context.success(request.id, r)
+                    is JsonResult -> {
+                        if (r.OK) {
+                            val d = r.data
+                            if (d == null) {
+                                context.success(request.id, KsonNull)
+                            } else {
+                                context.success(request.id, d as KsonValue)
+                            }
+                        } else {
+                            context.failed(request.id, code = r.code, message = r.message ?: "request error", data = r.data as? KsonValue)
+                        }
+                    }
+
                     else -> context.success(request.id, Kson.toKson(r))
                 }
             }
