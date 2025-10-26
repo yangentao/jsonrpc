@@ -33,6 +33,7 @@ object Rpc {
 
 open class RpcException(val id: KsonValue, val error: RpcError) : Exception(error.message) {
     constructor(error: RpcError) : this(KsonNull, error)
+    constructor(message: String, code: Int = -1) : this(KsonNull, RpcError(code, message))
 }
 
 sealed class RpcPacket(val version: String = Rpc.VERSION) {

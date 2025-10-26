@@ -92,6 +92,7 @@ data class RpcError(val code: Int, val message: String, val data: KsonValue? = n
         val methodNotFound = RpcError(32601, "Method NOT Found")
         val invalidParams = RpcError(32602, "Invalid Params")
         val internal = RpcError(32603, "Internal Error")
+        val unauthorized = RpcError(401, "Unauthorized")
 
         fun internalError(data: String?): RpcError {
             return if (data != null) {

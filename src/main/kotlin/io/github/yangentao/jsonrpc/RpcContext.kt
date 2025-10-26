@@ -10,6 +10,7 @@ open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), va
     val outputs: MutableMap<String, Any> = LinkedHashMap()
     var committed: Boolean = false
         private set
+    val timeNow: Long = System.currentTimeMillis()
     private var responseValue: RpcResponse? = null
 
     val response: RpcResponse get() = responseValue!!

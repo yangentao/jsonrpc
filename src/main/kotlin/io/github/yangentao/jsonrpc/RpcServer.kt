@@ -155,7 +155,7 @@ class RpcServer() {
     }
 
     companion object {
-        val NAME_TRIM_END: HashSet<String> = hashSetOf("Action", "Actions", "Page", "Controller", "Group")
+        val NAME_TRIM_END: HashSet<String> = hashSetOf("Rpc", "Action", "Actions", "Page", "Controller", "Group")
     }
 }
 
