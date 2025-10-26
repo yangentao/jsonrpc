@@ -42,28 +42,34 @@ class RpcServer() {
                 it.invoke(context, request, ac)
                 if (context.committed) return context.response
             }
-            val r = ac.invoke(context, request)
-            if (!context.committed) {
-                when (r) {
-                    null -> context.success(request.id, KsonNull)
-                    Unit -> context.response(RpcNoResponse)
-                    is RpcError -> context.failed(request.id, r)
-                    is RpcResponse -> context.response(r)
-                    is KsonValue -> context.success(request.id, r)
-                    is JsonResult -> {
-                        if (r.OK) {
-                            val d = r.data
-                            if (d == null) {
-                                context.success(request.id, KsonNull)
+            try {
+                val r = ac.invoke(context, request)
+                if (!context.committed) {
+                    when (r) {
+                        null -> context.success(request.id, KsonNull)
+                        Unit -> context.response(RpcNoResponse)
+                        is RpcError -> context.failed(request.id, r)
+                        is RpcResponse -> context.response(r)
+                        is KsonValue -> context.success(request.id, r)
+                        is JsonResult -> {
+                            if (r.OK) {
+                                val d = r.data
+                                if (d == null) {
+                                    context.success(request.id, KsonNull)
+                                } else {
+                                    context.success(request.id, d as KsonValue)
+                                }
                             } else {
-                                context.success(request.id, d as KsonValue)
+                                context.failed(request.id, code = r.code, message = r.message ?: "request error", data = r.data as? KsonValue)
                             }
-                        } else {
-                            context.failed(request.id, code = r.code, message = r.message ?: "request error", data = r.data as? KsonValue)
                         }
-                    }
 
-                    else -> context.success(request.id, Kson.toKson(r))
+                        else -> context.success(request.id, Kson.toKson(r))
+                    }
+                }
+            } catch (re: RpcException) {
+                if (!context.committed) {
+                    context.failed(request.id, re.error)
                 }
             }
 
@@ -71,7 +77,7 @@ class RpcServer() {
             afterActions.forEach { it.invoke(context, request, ac) }
             ls.forEach { it.afterAction(context, request, ac) }
         } catch (re: RpcException) {
-            return context.tryError(re)
+            return context.failed(request.id, re.error)
         } catch (ex: Exception) {
             ex.printStackTrace()
             if (!context.committed) {
