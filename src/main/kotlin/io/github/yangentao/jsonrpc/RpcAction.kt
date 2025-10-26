@@ -53,12 +53,12 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 map[p] = context
                             } else if (p.acceptClass(RpcRequest::class)) {
                                 map[p] = request
+                            } else if (p.isOptional) {
+                                continue
+                            } else if (p.type.isMarkedNullable) {
+                                map[p] = null
                             } else {
-                                if (p.isOptional) {
-                                    continue
-                                } else {
-                                    return RpcError.invalidParams
-                                }
+                                return RpcError.invalidParam(p.userName)
                             }
                         }
                     }
@@ -84,8 +84,12 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                             } else if (iter.hasNext()) {
                                 val v = p.fromRpcValue(iter.next())
                                 ls.add(v)
-                            } else if (!p.isOptional) {
-                                return RpcError.invalidParams
+                            } else if (p.isOptional) {
+                                continue
+                            } else if (p.type.isMarkedNullable) {
+                                ls.add(null)
+                            } else {
+                                return RpcError.invalidParam(p.userName)
                             }
 
                         }
@@ -113,12 +117,14 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
                                 map[p] = request
                             } else {
                                 val jv = request.params[p.userName]
-                                if (jv != null) {
+                                if (jv != null && !jv.isNull) {
                                     map[p] = p.fromRpcValue(jv)
                                 } else if (p.isOptional) {
                                     continue
+                                } else if (p.type.isMarkedNullable) {
+                                    map[p] = null
                                 } else {
-                                    return RpcError.invalidParams
+                                    return RpcError.invalidParam(p.userName)
                                 }
                             }
                         }
