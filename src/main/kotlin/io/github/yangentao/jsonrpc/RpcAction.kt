@@ -7,6 +7,7 @@ import io.github.yangentao.kson.*
 import io.github.yangentao.types.acceptClass
 import io.github.yangentao.types.ownerClass
 import io.github.yangentao.types.ownerObject
+import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
@@ -33,6 +34,14 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
     }
 
     fun invoke(context: RpcContext, request: RpcRequest): Any? {
+        try {
+            return invokeInternal(context, request)
+        } catch (e: InvocationTargetException) {
+            throw e.targetException
+        }
+    }
+
+    private fun invokeInternal(context: RpcContext, request: RpcRequest): Any? {
         val inst: Any? = instanceGroup()
 
         when (request.params) {
