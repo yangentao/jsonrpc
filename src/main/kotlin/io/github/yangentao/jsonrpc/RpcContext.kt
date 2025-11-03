@@ -27,7 +27,7 @@ open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), va
     }
 
     fun failed(id: KsonValue, code: Int, message: String, data: KsonValue? = null): RpcResponse {
-        return failed(id, RpcError(code, message, data))
+        return failed(id, RpcError( message,code,  data))
     }
 
     fun failed(id: KsonValue, error: RpcError): RpcResponse {

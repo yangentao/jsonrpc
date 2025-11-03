@@ -21,6 +21,13 @@ class RpcServer() {
     private val interObjects: ArrayList<RpcInterceptor> = ArrayList()
     private val beforeActions: ArrayList<RpcActionInterceptor> = ArrayList()
     private val afterActions: ArrayList<RpcActionInterceptor> = ArrayList()
+    private val encoders: ArrayList<RpcEncoder> = ArrayList()
+
+    fun addEncoder(encoder: RpcEncoder) {
+        if (!encoders.contains(encoder)) {
+            encoders.add(encoder)
+        }
+    }
 
     fun find(method: String): RpcAction? {
         return actionMap[method]
@@ -44,6 +51,10 @@ class RpcServer() {
             }
             try {
                 val r = ac.invoke(context, request)
+                if (r != null) {
+                    encoders.firstOrNull { it.acceptRpc(r) }?.encodeRpc(r)?.also { v -> context.success(request.id, v) }
+                }
+
                 if (!context.committed) {
                     when (r) {
                         null -> context.success(request.id, KsonNull)
@@ -216,4 +227,9 @@ internal class RpcFuncInterceptor(val func: KFunction<Unit>, val funcClass: KCla
 private fun RpcContext.tryError(re: RpcException): RpcResponse {
     if (!committed) this.failed(re.id, re.error)
     return this.response
+}
+
+interface RpcEncoder {
+    fun acceptRpc(value: Any): Boolean
+    fun encodeRpc(value: Any): KsonValue
 }

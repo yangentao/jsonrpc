@@ -19,7 +19,7 @@ class RpcResult(val id: KsonValue, val result: KsonValue) : RpcResponse() {
 }
 
 class RpcFailed(val id: KsonValue, val error: RpcError) : RpcResponse() {
-    constructor(id: KsonValue, code: Int, message: String, data: KsonValue? = null) : this(id, RpcError(code, message, data))
+    constructor(id: KsonValue, code: Int, message: String, data: KsonValue? = null) : this(id, RpcError(message, code, data))
 
     init {
         assert(id.isNull || id is KsonNum || id is KsonString)
@@ -77,7 +77,7 @@ sealed class RpcResponse() : RpcPacket() {
     }
 }
 
-data class RpcError(val code: Int, val message: String, val data: KsonValue? = null) {
+data class RpcError(val message: String, val code: Int = -1, val data: KsonValue? = null) {
 
     fun toJson(): KsonObject {
         if (data == null || data.isNull) {
@@ -87,27 +87,27 @@ data class RpcError(val code: Int, val message: String, val data: KsonValue? = n
     }
 
     companion object {
-        val parse = RpcError(32700, "Parse error")
-        val invalidRequest = RpcError(32600, "Invalid Request")
-        val methodNotFound = RpcError(32601, "Method NOT Found")
+        val parse = RpcError("Parse error", 32700)
+        val invalidRequest = RpcError("Invalid Request", 32600)
+        val methodNotFound = RpcError("Method NOT Found", 32601)
 
         //        val invalidParams = RpcError(32602, "Invalid Params")
-        val internal = RpcError(32603, "Internal Error")
-        val unauthorized = RpcError(401, "Unauthorized")
+        val internal = RpcError("Internal Error", 32603)
+        val unauthorized = RpcError("Unauthorized", 401)
 
         fun invalidParam(param: String = ""): RpcError {
-            return RpcError(32602, "参数错误 $param ")
+            return RpcError("参数错误 $param ", 32602)
         }
 
         fun internalError(data: String?): RpcError {
             return if (data != null) {
-                RpcError(32603, "Internal Error", KsonString(data))
+                RpcError("Internal Error", 32603, KsonString(data))
             } else internal
         }
 
         fun server(code: Int, message: String, data: KsonValue? = null): RpcError {
             assert(code in 32000..32099)
-            return RpcError(code, message, data)
+            return RpcError(message, code, data)
         }
     }
 }
