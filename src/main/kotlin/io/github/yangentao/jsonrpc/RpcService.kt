@@ -80,7 +80,7 @@ class RpcService(workerCount: Int = 4) {
     private fun onRecvPacket(context: RpcContext, jo: KsonObject): RpcResponse? {
         val p = Rpc.detectPacket(jo)
         if (p is RpcRequest) {
-            onRequest(context, p)
+            return onRequest(context, p)
         }
         if (p is RpcResponse) {
             onResponse(p)

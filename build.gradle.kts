@@ -16,7 +16,7 @@ plugins {
 
 group = "io.github.yangentao"
 
-version = "1.0.19"
+version = "1.0.20"
 val artifactName = "jsonrpc"
 val githubLib = "jsonrpc"
 val descLib = "Json Rpc 2.0 for Kotlin."
