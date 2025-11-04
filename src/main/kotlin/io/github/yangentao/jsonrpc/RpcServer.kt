@@ -35,7 +35,9 @@ class RpcServer() {
 
     fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
         val ac = find(request.method) ?: return context.failed(request.id, RpcError.methodNotFound)
+
         try {
+
             val ls: List<RpcInterceptor> = interClasses.map { it.objectInstance ?: it.createInstance() }
             ls.forEach {
                 it.beforeAction(context, request, ac)
@@ -52,7 +54,7 @@ class RpcServer() {
             try {
                 val r = ac.invoke(context, request)
                 if (r != null) {
-                    encoders.firstOrNull { it.acceptRpc(r) }?.encodeRpc(r)?.also { v -> context.success(request.id, v) }
+                    encoders.firstOrNull { it.matchValue(r) }?.encodeValue(r)?.also { v -> context.success(request.id, v) }
                 }
 
                 if (!context.committed) {
@@ -230,6 +232,7 @@ private fun RpcContext.tryError(re: RpcException): RpcResponse {
 }
 
 interface RpcEncoder {
-    fun acceptRpc(value: Any): Boolean
-    fun encodeRpc(value: Any): KsonValue
+    fun matchValue(value: Any): Boolean
+    fun encodeValue(value: Any): KsonValue
 }
+

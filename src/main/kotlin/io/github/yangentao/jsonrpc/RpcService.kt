@@ -14,16 +14,16 @@ class RpcService(workerCount: Int = 4) {
         client.onResponse(response)
     }
 
-    fun send(method: String, params: List<Pair<String, Any?>>, callback: RpcCallback?, timeoutMS: Long = 20_000): String {
-        return send(method, ksonObject(params), callback, timeoutMS)
+    fun send(sender: RpcTextSender, method: String, params: List<Pair<String, Any?>>, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
+        return send(sender, method, ksonObject(params), callback, timeoutMS)
     }
 
-    fun send(method: String, params: KsonObject, callback: RpcCallback?, timeoutMS: Long = 20_000): String {
-        return client.send(method, params, callback, timeoutMS)
+    fun send(sender: RpcTextSender, method: String, params: KsonObject, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
+        return client.send(sender, method, params, callback, timeoutMS)
     }
 
-    fun batch(items: List<BatchItem>): String {
-        return client.batch(items)
+    fun sendBatch(sender: RpcTextSender, items: List<BatchItem>): Boolean {
+        return client.sendBatch(sender, items)
     }
 
     fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
@@ -77,14 +77,10 @@ class RpcService(workerCount: Int = 4) {
         server.addGroup(group, noGroupName)
     }
 
-    private fun onRecvPacket(context: RpcContext, jo: KsonObject, acceptor: (RpcRequest) -> Boolean): RpcResponse? {
+    private fun onRecvPacket(context: RpcContext, jo: KsonObject): RpcResponse? {
         val p = Rpc.detectPacket(jo)
         if (p is RpcRequest) {
-            return if (acceptor(p)) {
-                onRequest(context, p)
-            } else {
-                null
-            }
+            onRequest(context, p)
         }
         if (p is RpcResponse) {
             onResponse(p)
@@ -93,18 +89,14 @@ class RpcService(workerCount: Int = 4) {
     }
 
     fun onRecv(context: RpcContext, textPacket: String): String? {
-        return onRecv(context, textPacket) { true }
-    }
-
-    fun onRecv(context: RpcContext, textPacket: String, acceptor: (RpcRequest) -> Boolean): String? {
         try {
             val jv = Kson.parse(textPacket) ?: return null
             if (jv is KsonObject) {
-                return onRecvPacket(context, jv, acceptor)?.jsonText
+                return onRecvPacket(context, jv)?.jsonText
             }
             if (jv is KsonArray) {
                 val ls = jv.objectList.mapNotNull {
-                    onRecvPacket(context, it, acceptor)
+                    onRecvPacket(context, it)
                 }.filter { it !is RpcNoResponse }
                 return if (ls.isEmpty()) null else ksonArray(ls.map { it.toJson() }).toString()
             }

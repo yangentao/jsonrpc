@@ -58,23 +58,24 @@ class RpcClient(workerCount: Int = 4) {
         }
     }
 
-    fun sendParams(method: String, params: List<Pair<String, Any?>>, callback: RpcCallback?, timeoutMS: Long = 20_000): String {
-        return send(method, ksonObject(params), callback, timeoutMS)
+    fun sendParams(sender: RpcTextSender, method: String, params: List<Pair<String, Any?>>, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
+        return send(sender, method, ksonObject(params), callback, timeoutMS)
     }
 
-    fun send(method: String, params: KsonObject, callback: RpcCallback?, timeoutMS: Long = 20_000): String {
+    fun send(sender: RpcTextSender, method: String, params: KsonObject, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
         if (callback == null) {
             val r = RpcRequest(KsonNull, method, params)
-            return r.toString()
-        } else {
-            val id = Rpc.nextID
-            val r = RpcRequest(KsonNum(id), method, params)
-            put(id, RemoteAction(r, callback, timeoutMS))
-            return r.toString()
+            return sender.sendText(r.toString())
         }
+        val id = Rpc.nextID
+        val r = RpcRequest(KsonNum(id), method, params)
+        val ok = sender.sendText(r.toString())
+        if (ok) put(id, RemoteAction(r, callback, timeoutMS))
+        return ok
     }
 
-    fun batch(items: List<BatchItem>): String {
+    fun sendBatch(sender: RpcTextSender, items: List<BatchItem>): Boolean {
+        val idSet = HashSet<Long>()
         val ja = KsonArray()
         for (item in items) {
             if (item.callback == null) {
@@ -85,13 +86,17 @@ class RpcClient(workerCount: Int = 4) {
                 val r = RpcRequest(KsonNum(id), item.method, ksonObject(item.params))
                 ja.add(r.toJson())
                 put(id, RemoteAction(r, item.callback, item.timeoutMS))
+                idSet.add(id)
             }
         }
-        return if (ja.isNotEmpty()) {
-            ja.toString()
-        } else {
-            ""
+        if (ja.isEmpty()) {
+            return false
         }
+        val ok = sender.sendText(ja.toString())
+        if (!ok) {
+            for (id in idSet) remove(id)
+        }
+        return ok
     }
 
 }
@@ -110,6 +115,10 @@ interface RpcCallback {
     fun onResult(result: KsonValue)
     fun onError(error: RpcException)
     fun onTimeout()
+}
+
+fun interface RpcTextSender {
+    fun sendText(text: String): Boolean
 }
 
 
