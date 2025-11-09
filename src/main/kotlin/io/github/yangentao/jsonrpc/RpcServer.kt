@@ -3,10 +3,7 @@
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
-import io.github.yangentao.kson.JsonResult
-import io.github.yangentao.kson.Kson
-import io.github.yangentao.kson.KsonNull
-import io.github.yangentao.kson.KsonValue
+import io.github.yangentao.kson.*
 import io.github.yangentao.types.*
 import kotlin.reflect.KClass
 import kotlin.reflect.KFunction
@@ -34,7 +31,7 @@ class RpcServer() {
     }
 
     fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
-        val ac = find(request.method) ?: return context.failed(request.id, RpcError.methodNotFound)
+        val ac = find(request.method) ?: return context.failed(request.id, RpcError.methodNotFound(data = KsonString(request.method)))
 
         try {
 

@@ -89,7 +89,7 @@ data class RpcError(val message: String, val code: Int = -1, val data: KsonValue
     companion object {
         val parse = RpcError("Parse error", 32700)
         val invalidRequest = RpcError("Invalid Request", 32600)
-        val methodNotFound = RpcError("Method NOT Found", 32601)
+        fun methodNotFound(data: KsonValue? = null) = RpcError("Method NOT Found", 32601, data = data)
 
         //        val invalidParams = RpcError(32602, "Invalid Params")
         val internal = RpcError("Internal Error", 32603)
