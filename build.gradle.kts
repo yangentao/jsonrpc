@@ -34,7 +34,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     api("io.github.yangentao:anno:[2.0.0,)")
     api("io.github.yangentao:kson:[2.0.7,)")
-    api("io.github.yangentao:types:[2.0.13,)")
+    api("io.github.yangentao:types:[2.0.14,)")
 }
 
 tasks.test {
