@@ -1,5 +1,3 @@
-@file:Suppress("unused")
-
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
@@ -30,7 +28,7 @@ class RpcServer() {
         return actionMap[method]
     }
 
-    fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
+    fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse? {
         val ac = find(request.method) ?: return context.failed(request.id, RpcError.methodNotFound(data = KsonString(request.method)))
 
         try {
@@ -50,39 +48,17 @@ class RpcServer() {
             }
             try {
                 val r = ac.invoke(context, request)
-                if (r != null) {
-                    encoders.firstOrNull { it.matchValue(r) }?.encodeValue(r)?.also { v -> context.success(request.id, v) }
-                }
-
-                if (!context.committed) {
-                    when (r) {
-                        null -> context.success(request.id, KsonNull)
-                        Unit -> context.response(RpcNoResponse)
-                        is RpcError -> context.failed(request.id, r)
-                        is RpcResponse -> context.response(r)
-                        is KsonValue -> context.success(request.id, r)
-                        is JsonResult -> {
-                            if (r.OK) {
-                                val d = r.data
-                                if (d == null) {
-                                    context.success(request.id, KsonNull)
-                                } else {
-                                    context.success(request.id, d as KsonValue)
-                                }
-                            } else {
-                                context.failed(request.id, code = r.code, message = r.message ?: "request error", data = r.data as? KsonValue)
-                            }
-                        }
-
-                        else -> context.success(request.id, Kson.toKson(r))
-                    }
+                if (r == null || r == Unit) {
+                    context.commitNotify()
+                } else {
+                    val enc: RpcEncoder = encoders.firstOrNull { it.matchValue(r) } ?: DefaultRpcEncoder
+                    context.response(enc.encodeValue(request, r))
                 }
             } catch (re: RpcException) {
                 if (!context.committed) {
                     context.failed(request.id, re.error)
                 }
             }
-
             interObjects.forEach { it.afterAction(context, request, ac) }
             afterActions.forEach { it.invoke(context, request, ac) }
             ls.forEach { it.afterAction(context, request, ac) }
@@ -223,13 +199,37 @@ internal class RpcFuncInterceptor(val func: KFunction<Unit>, val funcClass: KCla
     }
 }
 
-private fun RpcContext.tryError(re: RpcException): RpcResponse {
-    if (!committed) this.failed(re.id, re.error)
-    return this.response
-}
-
 interface RpcEncoder {
     fun matchValue(value: Any): Boolean
-    fun encodeValue(value: Any): KsonValue
+    fun encodeValue(request: RpcRequest, value: Any): RpcResponse
 }
+
+object DefaultRpcEncoder : RpcEncoder {
+    override fun matchValue(value: Any): Boolean {
+        return true
+    }
+
+    override fun encodeValue(request: RpcRequest, value: Any): RpcResponse {
+        return when (value) {
+            is RpcError -> RpcResponse.failed(request.id, value)
+            is RpcResponse -> value
+            is KsonValue -> RpcResponse.success(request.id, value)
+            is JsonResult -> {
+                if (value.OK) {
+                    val d = value.data
+                    if (d == null) {
+                        RpcResponse.success(request.id, KsonNull)
+                    } else {
+                        RpcResponse.success(request.id, d as KsonValue)
+                    }
+                } else {
+                    RpcResponse.failed(request.id, message = value.message ?: "request error", code = value.code, data = value.data as? KsonValue)
+                }
+            }
+
+            else -> RpcResponse.success(request.id, Kson.toKson(value))
+        }
+    }
+}
+
 

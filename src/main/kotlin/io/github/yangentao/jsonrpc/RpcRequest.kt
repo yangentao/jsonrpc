@@ -68,7 +68,6 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
     }
 
     override fun onJson(jo: KsonObject) {
-        super.onJson(jo)
         when (id) {
             KsonNull -> {}
             is KsonString, is KsonNum -> jo.putAny(Rpc.ID, id)

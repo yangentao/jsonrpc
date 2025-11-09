@@ -26,7 +26,7 @@ class RpcService(workerCount: Int = 4) {
         return client.sendBatch(sender, items)
     }
 
-    fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse {
+    fun onRequest(context: RpcContext, request: RpcRequest): RpcResponse? {
         return server.onRequest(context, request)
     }
 
@@ -97,13 +97,13 @@ class RpcService(workerCount: Int = 4) {
             if (jv is KsonArray) {
                 val ls = jv.objectList.mapNotNull {
                     onRecvPacket(context, it)
-                }.filter { it !is RpcNoResponse }
+                }
                 return if (ls.isEmpty()) null else ksonArray(ls.map { it.toJson() }).toString()
             }
         } catch (re: RpcException) {
-            return RpcFailed(re.id, re.error).toString()
+            return RpcResponse.failed(re.id, re.error).toString()
         } catch (e: Exception) {
-            return RpcFailed(KsonNull, RpcError.internalError(e.message)).toString()
+            return RpcResponse.failed(KsonNull, RpcError.internalError(e.message)).toString()
         }
         return null
     }

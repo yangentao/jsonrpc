@@ -50,9 +50,7 @@ sealed class RpcPacket(val version: String = Rpc.VERSION) {
         return jo
     }
 
-    open fun onJson(jo: KsonObject) {
-
-    }
+    abstract fun onJson(jo: KsonObject)
 
     override fun toString(): String {
         return toJson().toString()

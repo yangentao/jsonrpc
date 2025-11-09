@@ -4,69 +4,55 @@ package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.kson.*
 
-object RpcNoResponse : RpcResponse()
-
-class RpcResult(val id: KsonValue, val result: KsonValue) : RpcResponse() {
+class RpcResponse(val id: KsonValue, val result: KsonValue? = null, val error: RpcError? = null) : RpcPacket() {
     init {
-        assert(id is KsonNum || id is KsonString)
+        assert(result == null || error == null);
+        if (error == null) {
+            assert(id is KsonNum || id is KsonString)
+        } else {
+            assert(id is KsonNum || id is KsonString || id is KsonNull)
+        }
     }
 
     override fun onJson(jo: KsonObject) {
-        super.onJson(jo)
         jo.putAny(Rpc.ID, id)
-        jo.putAny(Rpc.RESULT, result)
-    }
-}
-
-class RpcFailed(val id: KsonValue, val error: RpcError) : RpcResponse() {
-    constructor(id: KsonValue, code: Int, message: String, data: KsonValue? = null) : this(id, RpcError(message, code, data))
-
-    init {
-        assert(id.isNull || id is KsonNum || id is KsonString)
+        if (failed) {
+            jo.putObject(Rpc.ERROR, error!!.toJson())
+        } else {
+            jo.putAny(Rpc.RESULT, result)
+        }
     }
 
-    override fun onJson(jo: KsonObject) {
-        super.onJson(jo)
-        if (!id.isNull) {
-            jo.putAny(Rpc.ID, id)
-        }
-        jo.putObject(Rpc.ERROR, error.toJson())
-    }
-}
+    val success: Boolean get() = error == null
+    val failed: Boolean get() = error != null
 
-sealed class RpcResponse() : RpcPacket() {
+    val longID: Long get() = (id as KsonNum).data.toLong()
 
-    val longID: Long
-        get() {
-            return when (this) {
-                is RpcResult -> (id as KsonNum).data.toLong()
-                is RpcFailed -> (id as? KsonNum)?.data?.toLong() ?: -1L
-                is RpcNoResponse -> -1L
-            }
-        }
-
-    val jsonText: String?
-        get() {
-            return when (this) {
-                is RpcResult -> this.toString()
-                is RpcFailed -> this.toString()
-                is RpcNoResponse -> null
-            }
-        }
+    val jsonText: String get() = this.toString()
 
     companion object {
+        fun success(id: KsonValue, result: KsonValue): RpcResponse {
+            return RpcResponse(id, result = result)
+        }
+
+        fun failed(id: KsonValue, error: RpcError): RpcResponse {
+            return RpcResponse(id, error = error)
+        }
+
+        fun failed(id: KsonValue, message: String, code: Int = -1, data: KsonValue? = null): RpcResponse {
+            return failed(id, RpcError(message, code, data))
+        }
+
         fun from(jo: KsonObject): RpcResponse? {
             if (!jo.verifyVersion) return null
-            val id: KsonValue = jo[Rpc.ID] ?: KsonNull
-            val result = jo[Rpc.RESULT]
-            if (result != null && !id.isNull) {
-                return RpcResult(id, result)
-            }
+            val id: KsonValue = jo[Rpc.ID] ?: throw RpcError.invalidRequest.exception()
             val error = jo.getObject(Rpc.ERROR)
             if (error != null) {
-                val code: Int = error.getInt(Rpc.CODE) ?: 0
-                val message: String = error.getString(Rpc.MESSAGE) ?: "Failed"
-                return RpcFailed(id, code, message, error[Rpc.DATA])
+                return RpcResponse.failed(id, error.getString(Rpc.MESSAGE) ?: "Failed", code = error.getInt(Rpc.CODE) ?: 0, data = error[Rpc.DATA])
+            }
+            val result = jo[Rpc.RESULT]
+            if (result != null) {
+                return RpcResponse.success(id, result)
             }
             return null
         }

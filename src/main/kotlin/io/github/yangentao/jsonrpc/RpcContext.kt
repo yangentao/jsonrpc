@@ -7,32 +7,36 @@ import io.github.yangentao.kson.KsonValue
 import kotlin.reflect.KProperty
 
 open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), val extras: Map<String, Any> = emptyMap()) {
+    val timeNow: Long = System.currentTimeMillis()
     val outputs: MutableMap<String, Any> = LinkedHashMap()
     var committed: Boolean = false
         private set
-    val timeNow: Long = System.currentTimeMillis()
-    private var responseValue: RpcResponse? = null
+    var response: RpcResponse? = null
+        private set
 
-    val response: RpcResponse get() = responseValue!!
-
-    fun response(response: RpcResponse) {
+    fun commitNotify() {
         if (committed) error("Already Committed")
         committed = true
-        this.responseValue = response
+        this.response = null
+    }
+
+    fun response(response: RpcResponse): RpcResponse {
+        if (committed) error("Already Committed")
+        committed = true
+        this.response = response
+        return response
     }
 
     fun success(id: KsonValue, result: KsonValue): RpcResponse {
-        response(if (id.isNull) RpcNoResponse else RpcResult(id, result))
-        return this.response
+        return response(RpcResponse.success(id, result))
     }
 
     fun failed(id: KsonValue, code: Int, message: String, data: KsonValue? = null): RpcResponse {
-        return failed(id, RpcError( message,code,  data))
+        return RpcResponse.failed(id, message, code = code, data = data)
     }
 
     fun failed(id: KsonValue, error: RpcError): RpcResponse {
-        response(if (id.isNull) RpcNoResponse else RpcFailed(id, error))
-        return this.response
+        return RpcResponse.failed(id, error)
     }
 }
 

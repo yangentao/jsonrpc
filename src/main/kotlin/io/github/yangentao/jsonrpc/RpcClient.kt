@@ -50,10 +50,10 @@ class RpcClient(workerCount: Int = 4) {
     fun onResponse(response: RpcResponse) {
         val info = remove(response.longID) ?: return
         tasks.submit {
-            when (response) {
-                is RpcNoResponse -> {}
-                is RpcResult -> info.callback.onResult(response.result)
-                is RpcFailed -> info.callback.onError(RpcException(response.id, response.error))
+            if (response.success) {
+                info.callback.onResult(response.result!!)
+            } else {
+                info.callback.onError(RpcException(response.id, response.error!!))
             }
         }
     }
