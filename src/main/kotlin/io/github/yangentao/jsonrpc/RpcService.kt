@@ -60,8 +60,8 @@ class RpcService(workerCount: Int = 4) {
         server.intercept(obj)
     }
 
-    fun addEncoder(encoder: RpcEncoder) {
-        server.addEncoder(encoder)
+    fun pushEncoder(encoder: RpcEncoder) {
+        server.pushEncoder(encoder)
     }
 
     fun add(action: KFunction<*>) {

@@ -16,11 +16,14 @@ class RpcServer() {
     private val interObjects: ArrayList<RpcInterceptor> = ArrayList()
     private val beforeActions: ArrayList<RpcActionInterceptor> = ArrayList()
     private val afterActions: ArrayList<RpcActionInterceptor> = ArrayList()
-    private val encoders: ArrayList<RpcEncoder> = ArrayList()
+    private val encoders: ArrayList<RpcEncoder> = ArrayList<RpcEncoder>().also {
+        it.add(JsonResultRpcEncoder)
+        it.add(PairRpcEncoder)
+    }
 
-    fun addEncoder(encoder: RpcEncoder) {
+    fun pushEncoder(encoder: RpcEncoder) {
         if (!encoders.contains(encoder)) {
-            encoders.add(encoder)
+            encoders.add(0, encoder)
         }
     }
 
@@ -47,12 +50,16 @@ class RpcServer() {
                 if (context.committed) return context.response
             }
             try {
-                val r = ac.invoke(context, request)
-                if (r == null || r == Unit) {
-                    context.commitNotify()
-                } else {
-                    val enc: RpcEncoder = encoders.firstOrNull { it.matchValue(r) } ?: DefaultRpcEncoder
-                    context.response(enc.encodeValue(request, r))
+                when (val r = ac.invoke(context, request)) {
+                    null, Unit -> context.commitNotify()
+                    is RpcResponse -> context.response(r)
+                    is RpcError -> context.failed(request.id, r)
+                    is KsonValue -> context.success(request.id, r)
+                    else -> {
+                        val enc: RpcEncoder = encoders.firstOrNull { it.matchValue(r) } ?: DefaultRpcEncoder
+                        val kv = enc.encodeValue(r)
+                        context.success(request.id, kv)
+                    }
                 }
             } catch (re: RpcException) {
                 if (!context.committed) {
@@ -201,7 +208,7 @@ internal class RpcFuncInterceptor(val func: KFunction<Unit>, val funcClass: KCla
 
 interface RpcEncoder {
     fun matchValue(value: Any): Boolean
-    fun encodeValue(request: RpcRequest, value: Any): RpcResponse
+    fun encodeValue(value: Any): KsonValue
 }
 
 object DefaultRpcEncoder : RpcEncoder {
@@ -209,27 +216,39 @@ object DefaultRpcEncoder : RpcEncoder {
         return true
     }
 
-    override fun encodeValue(request: RpcRequest, value: Any): RpcResponse {
-        return when (value) {
-            is RpcError -> RpcResponse.failed(request.id, value)
-            is RpcResponse -> value
-            is KsonValue -> RpcResponse.success(request.id, value)
-            is JsonResult -> {
-                if (value.OK) {
-                    val d = value.data
-                    if (d == null) {
-                        RpcResponse.success(request.id, KsonNull)
-                    } else {
-                        RpcResponse.success(request.id, d as KsonValue)
-                    }
-                } else {
-                    RpcResponse.failed(request.id, message = value.message ?: "request error", code = value.code, data = value.data as? KsonValue)
-                }
-            }
-
-            else -> RpcResponse.success(request.id, Kson.toKson(value))
-        }
+    override fun encodeValue(value: Any): KsonValue {
+        return Kson.toKson(value)
     }
 }
 
+object JsonResultRpcEncoder : RpcEncoder {
+    override fun matchValue(value: Any): Boolean {
+        return value is JsonResult
+    }
 
+    override fun encodeValue(value: Any): KsonValue {
+        value as JsonResult
+        if (value.OK) {
+            val d = value.data
+            return if (d == null) {
+                KsonNull
+            } else {
+                d as KsonValue
+            }
+        }
+        throw RpcException(message = value.message ?: "request error", code = value.code, data = value.data as? KsonValue)
+
+    }
+}
+
+object PairRpcEncoder : RpcEncoder {
+    override fun matchValue(value: Any): Boolean {
+        return value is Pair<*, *>
+    }
+
+    override fun encodeValue(value: Any): KsonValue {
+        value as Pair<*, *>
+        return ksonArray(Kson.toKson(value.first), Kson.toKson(value.second))
+//        return ksonObject("first" to Kson.toKson(value.first), "second" to Kson.toKson(value.second))
+    }
+}

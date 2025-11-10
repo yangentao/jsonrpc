@@ -34,7 +34,7 @@ object Rpc {
 
 open class RpcException(val id: KsonValue, val error: RpcError) : Exception(error.message) {
     constructor(error: RpcError) : this(KsonNull, error)
-    constructor(message: String, code: Int = -1) : this(KsonNull, RpcError(message, code))
+    constructor(message: String, code: Int = -1, data: KsonValue? = null ) : this(KsonNull, RpcError(message, code, data = data ))
 
     companion object {
         val badValue = RpcException("无效数据")
