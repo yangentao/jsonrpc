@@ -51,7 +51,7 @@ class RpcClient(workerCount: Int = 4) {
         val info = remove(response.longID) ?: return
         tasks.submit {
             if (response.success) {
-                info.callback.onResult(response.result!!)
+                info.callback.onResult(response.result ?: KsonNull)
             } else {
                 info.callback.onError(RpcException(response.id, response.error!!))
             }

@@ -51,10 +51,7 @@ class RpcResponse(val id: KsonValue, val result: KsonValue? = null, val error: R
                 return RpcResponse.failed(id, error.getString(Rpc.MESSAGE) ?: "Failed", code = error.getInt(Rpc.CODE) ?: 0, data = error[Rpc.DATA])
             }
             val result = jo[Rpc.RESULT]
-            if (result != null) {
-                return RpcResponse.success(id, result)
-            }
-            return null
+            return RpcResponse.success(id, result ?: KsonNull)
         }
 
         fun from(ja: KsonArray): List<RpcResponse> {
