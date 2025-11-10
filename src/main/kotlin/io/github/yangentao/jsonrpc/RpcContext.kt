@@ -32,11 +32,11 @@ open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), va
     }
 
     fun failed(id: KsonValue, code: Int, message: String, data: KsonValue? = null): RpcResponse {
-        return RpcResponse.failed(id, message, code = code, data = data)
+        return response(RpcResponse.failed(id, message, code = code, data = data))
     }
 
     fun failed(id: KsonValue, error: RpcError): RpcResponse {
-        return RpcResponse.failed(id, error)
+        return response(RpcResponse.failed(id, error))
     }
 }
 
