@@ -11,6 +11,10 @@ data class RpcError(val message: String, val code: Int = -1, val data: KsonValue
         return ksonObject(Rpc.CODE to code, Rpc.MESSAGE to message, Rpc.DATA to data)
     }
 
+    fun with(data: KsonValue?): RpcError {
+        return RpcError(message, code, data)
+    }
+
     companion object {
         val parse = RpcError("Parse error", 32700)
         val invalidRequest = RpcError("Invalid Request", 32600)
@@ -41,6 +45,9 @@ fun RpcError.exception(id: KsonValue = KsonNull): RpcException {
     return RpcException(id, this)
 }
 
+fun RpcError.error(id: KsonValue = KsonNull): Nothing {
+    throw RpcException(id, this)
+}
 
 
 
