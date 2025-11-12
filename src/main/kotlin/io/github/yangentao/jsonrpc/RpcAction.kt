@@ -7,6 +7,7 @@ import io.github.yangentao.kson.*
 import io.github.yangentao.types.acceptClass
 import io.github.yangentao.types.ownerClass
 import io.github.yangentao.types.ownerObject
+import io.github.yangentao.types.tryCreateInstance
 import java.lang.reflect.InvocationTargetException
 import kotlin.reflect.KCallable
 import kotlin.reflect.KClass
@@ -29,8 +30,8 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
         return action.findAnnotation<T>() ?: ownerClass?.findAnnotation<T>()
     }
 
-    private fun instanceGroup(): Any? {
-        return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.createInstance()
+    private fun instanceGroup(context: RpcContext): Any? {
+        return ownerObject ?: ownerClass?.objectInstance ?: ownerClass?.tryCreateInstance(context) ?: ownerClass?.createInstance()
     }
 
     fun invoke(context: RpcContext, request: RpcRequest): Any? {
@@ -42,7 +43,7 @@ open class RpcAction(val action: KCallable<*>, val group: KClass<*>? = null) {
     }
 
     private fun invokeInternal(context: RpcContext, request: RpcRequest): Any? {
-        val inst: Any? = instanceGroup()
+        val inst: Any? = instanceGroup(context)
 
         when (request.params) {
             null, KsonNull -> {
