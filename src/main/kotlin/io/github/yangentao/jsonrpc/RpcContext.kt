@@ -4,10 +4,12 @@ package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.anno.userName
 import io.github.yangentao.kson.KsonValue
+import io.github.yangentao.types.ICaseMap
 import kotlin.reflect.KProperty
 
-open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), val extras: Map<String, Any> = emptyMap()) {
+open class RpcContext(val session: MutableMap<String, Any> = LinkedHashMap(), extras: Map<String, Any> = emptyMap()) {
     val timeNow: Long = System.currentTimeMillis()
+    val extras: ICaseMap<Any> = ICaseMap(extras)
     val outputs: MutableMap<String, Any> = LinkedHashMap()
     var committed: Boolean = false
         private set
