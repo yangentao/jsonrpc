@@ -1,3 +1,5 @@
+@file:Suppress("unused")
+
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.kson.*
@@ -49,6 +51,9 @@ fun RpcError.error(id: KsonValue = KsonNull): Nothing {
     throw RpcException(id, this)
 }
 
+fun errorRpc(message: String, code: Int = -1, data: Any? = null): Nothing {
+    throw RpcException(message, code, data?.let { Kson.toKson(it) })
+}
 
 
 
