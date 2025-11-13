@@ -5,7 +5,6 @@ package io.github.yangentao.jsonrpc
 import io.github.yangentao.kson.KsonNull
 import io.github.yangentao.kson.KsonObject
 import io.github.yangentao.kson.KsonValue
-import io.github.yangentao.kson.ksonObject
 
 object Rpc {
     const val JSONRPC = "jsonrpc"
@@ -18,6 +17,8 @@ object Rpc {
     const val CODE = "code"
     const val MESSAGE = "message"
     const val DATA = "data"
+
+    const val TIMEOUT: Long = 10_000
 
     private var autoID: Long = 1
 
@@ -34,7 +35,7 @@ object Rpc {
 
 open class RpcException(val id: KsonValue, val error: RpcError) : Exception(error.message) {
     constructor(error: RpcError) : this(KsonNull, error)
-    constructor(message: String, code: Int = -1, data: KsonValue? = null ) : this(KsonNull, RpcError(message, code, data = data ))
+    constructor(message: String, code: Int = -1, data: KsonValue? = null) : this(KsonNull, RpcError(message, code, data = data))
 
     companion object {
         val badValue = RpcException("无效数据")
@@ -66,43 +67,43 @@ internal fun ksonObject(params: List<Pair<String, Any?>>): KsonObject {
     }
     return jo
 }
-
-class CallError(val message: String, val code: Int = -1, val data: Any? = null) {
-    fun toJson(): KsonObject {
-        return ksonObject("id" to code, "message" to message, "data" to data)
-    }
-
-    override fun toString(): String {
-        val s = toJson().toString()
-        return "CallError: $s "
-    }
-}
-
-class CallResult<T : Any> private constructor(val result: T? = null, val error: CallError? = null) {
-    val success: Boolean get() = error == null
-    val failed: Boolean get() = error != null
-
-    val requiredResult: T
-        get() {
-            assert(error == null && result != null)
-            return result!!
-        }
-
-    val errorCode: Int? get() = error?.code
-    val errorMessage: String? get() = error?.message
-    val errorData: Any? get() = error?.data
-
-    @Suppress("IfThenToElvis")
-    override fun toString(): String {
-        val s = if (error != null) error.toString() else "$result"
-        return "CallResult: $s "
-    }
-
-    companion object {
-        fun <T : Any> success(result: T?): CallResult<T> = CallResult<T>(result = result)
-        fun <T : Any> failed(message: String, code: Int = -1, data: Any? = null): CallResult<T> = CallResult<T>(error = CallError(message = message, code = code, data = data))
-    }
-}
-
-
-
+//
+//class CallError(val message: String, val code: Int = -1, val data: Any? = null) {
+//    fun toJson(): KsonObject {
+//        return ksonObject("id" to code, "message" to message, "data" to data)
+//    }
+//
+//    override fun toString(): String {
+//        val s = toJson().toString()
+//        return "CallError: $s "
+//    }
+//}
+//
+//class CallResult<T : Any> private constructor(val result: T? = null, val error: CallError? = null) {
+//    val success: Boolean get() = error == null
+//    val failed: Boolean get() = error != null
+//
+//    val requiredResult: T
+//        get() {
+//            assert(error == null && result != null)
+//            return result!!
+//        }
+//
+//    val errorCode: Int? get() = error?.code
+//    val errorMessage: String? get() = error?.message
+//    val errorData: Any? get() = error?.data
+//
+//    @Suppress("IfThenToElvis")
+//    override fun toString(): String {
+//        val s = if (error != null) error.toString() else "$result"
+//        return "CallResult: $s "
+//    }
+//
+//    companion object {
+//        fun <T : Any> success(result: T?): CallResult<T> = CallResult<T>(result = result)
+//        fun <T : Any> failed(message: String, code: Int = -1, data: Any? = null): CallResult<T> = CallResult<T>(error = CallError(message = message, code = code, data = data))
+//    }
+//}
+//
+//
+//

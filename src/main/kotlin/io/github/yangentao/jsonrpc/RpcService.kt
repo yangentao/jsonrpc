@@ -14,11 +14,7 @@ class RpcService(workerCount: Int = 4) {
         client.onResponse(response)
     }
 
-    fun send(sender: RpcTextSender, method: String, params: List<Pair<String, Any?>>, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
-        return send(sender, method, ksonObject(params), callback, timeoutMS)
-    }
-
-    fun send(sender: RpcTextSender, method: String, params: KsonObject, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
+    fun send(sender: RpcTextSender, method: String, params: KsonValue, callback: RpcCallback?, timeoutMS: Long = Rpc.TIMEOUT): Boolean {
         return client.send(sender, method, params, callback, timeoutMS)
     }
 

@@ -55,5 +55,9 @@ fun errorRpc(message: String, code: Int = -1, data: Any? = null): Nothing {
     throw RpcException(message, code, data?.let { Kson.toKson(it) })
 }
 
+fun errorRpc(re: RpcError, id: KsonValue = KsonNull): Nothing {
+    throw RpcException(id, re)
+}
+
 
 

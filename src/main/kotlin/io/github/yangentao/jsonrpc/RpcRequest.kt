@@ -106,7 +106,7 @@ class RpcRequest(val id: KsonValue, val method: String, val params: KsonValue?) 
             return RpcRequest(id, method, params)
         }
 
-        fun from(ja: KsonArray): List<RpcRequest> {
+        fun fromBatch(ja: KsonArray): List<RpcRequest> {
             return ja.objectList.mapNotNull { from(it) }
         }
     }

@@ -58,11 +58,8 @@ class RpcClient(workerCount: Int = 4) {
         }
     }
 
-    fun sendParams(sender: RpcTextSender, method: String, params: List<Pair<String, Any?>>, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
-        return send(sender, method, ksonObject(params), callback, timeoutMS)
-    }
-
-    fun send(sender: RpcTextSender, method: String, params: KsonObject, callback: RpcCallback?, timeoutMS: Long = 20_000): Boolean {
+    fun send(sender: RpcTextSender, method: String, params: KsonValue, callback: RpcCallback?, timeoutMS: Long = Rpc.TIMEOUT): Boolean {
+        assert(params is KsonObject || params is KsonArray || params is KsonNull)
         if (callback == null) {
             val r = RpcRequest(KsonNull, method, params)
             return sender.sendText(r.toString())

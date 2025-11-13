@@ -45,16 +45,16 @@ class RpcResponse(val id: KsonValue, val result: KsonValue? = null, val error: R
 
         fun from(jo: KsonObject): RpcResponse? {
             if (!jo.verifyVersion) return null
-            val id: KsonValue = jo[Rpc.ID] ?: throw RpcError.invalidRequest.exception()
+            val id: KsonValue = jo[Rpc.ID] ?: errorRpc(RpcError.invalidRequest)
             val error = jo.getObject(Rpc.ERROR)
             if (error != null) {
-                return RpcResponse.failed(id, error.getString(Rpc.MESSAGE) ?: "Failed", code = error.getInt(Rpc.CODE) ?: 0, data = error[Rpc.DATA])
+                return RpcResponse.failed(id, error.getString(Rpc.MESSAGE) ?: "Failed", code = error.getInt(Rpc.CODE) ?: -1, data = error[Rpc.DATA])
             }
             val result = jo[Rpc.RESULT]
             return RpcResponse.success(id, result ?: KsonNull)
         }
 
-        fun from(ja: KsonArray): List<RpcResponse> {
+        fun fromBatch(ja: KsonArray): List<RpcResponse> {
             return ja.objectList.mapNotNull { from(it) }
         }
     }
