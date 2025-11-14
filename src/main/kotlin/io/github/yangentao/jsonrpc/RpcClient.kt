@@ -3,20 +3,17 @@
 package io.github.yangentao.jsonrpc
 
 import io.github.yangentao.kson.*
-import java.util.concurrent.Executors
-import java.util.concurrent.ScheduledExecutorService
+import io.github.yangentao.types.Tasks
 import java.util.concurrent.ScheduledFuture
-import java.util.concurrent.TimeUnit
 
 class RpcClient(workerCount: Int = 4) {
     private val map = HashMap<Long, RemoteAction>()
-    val tasks: ScheduledExecutorService = Executors.newScheduledThreadPool(2)
     private var fu: ScheduledFuture<*>? = null
 
     @Synchronized
     private fun put(id: Long, action: RemoteAction) {
         if (fu == null) {
-            fu = tasks.scheduleAtFixedRate(this::checkTimeout, 2000, 2000, TimeUnit.MILLISECONDS)
+            fu = Tasks.fixedRateMill(2000, this::checkTimeout)
         }
         map[id] = action
     }
@@ -41,7 +38,7 @@ class RpcClient(workerCount: Int = 4) {
         }
         for (id in kSet) {
             val r = remove(id) ?: continue
-            tasks.submit {
+            Tasks.submit {
                 r.callback.onTimeout()
             }
         }
@@ -49,7 +46,7 @@ class RpcClient(workerCount: Int = 4) {
 
     fun onResponse(response: RpcResponse) {
         val info = remove(response.longID) ?: return
-        tasks.submit {
+        Tasks.submit {
             if (response.success) {
                 info.callback.onResult(response.result ?: KsonNull)
             } else {

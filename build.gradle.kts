@@ -16,7 +16,7 @@ plugins {
 
 group = "io.github.yangentao"
 
-version = "1.1.4"
+version = "1.1.5"
 val artifactName = "jsonrpc"
 val githubLib = "jsonrpc"
 val descLib = "Json Rpc 2.0 for Kotlin."
@@ -34,7 +34,7 @@ dependencies {
     implementation(kotlin("stdlib"))
     api("io.github.yangentao:anno:[2.0.0,)")
     api("io.github.yangentao:kson:[2.0.7,)")
-    api("io.github.yangentao:types:[2.0.14,)")
+    api("io.github.yangentao:types:[2.0.16,)")
 }
 
 tasks.test {
